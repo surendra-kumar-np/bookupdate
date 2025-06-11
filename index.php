@@ -2,7 +2,9 @@
 <?php
 $jsonFile = 'data.json';
 
-// Handle AJAX save request
+// header('Content-Type: application/json');
+
+// Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
     $postData = json_decode($input, true);
@@ -11,8 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    header('Content-Type: application/json');
-
+    // Action: Save full data
     if (isset($postData['action']) && $postData['action'] === 'save') {
         try {
             if (!isset($postData['data'])) {
@@ -22,18 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $dataToSave = $postData['data'];
 
-            // 🔁 Sort all blocks in every answer if needed
+            // Sort blocks in each answer
             foreach ($dataToSave['chapters'] as &$chapter) {
                 foreach ($chapter['questions'] as &$question) {
                     foreach ($question['answers'] as &$answer) {
                         if (isset($answer['answer']['blocks']) && is_array($answer['answer']['blocks'])) {
-                            // If there's a 'position' key, sort by that
                             usort($answer['answer']['blocks'], function ($a, $b) {
-                                // Prefer sorting by position if available
                                 if (isset($a['position'], $b['position'])) {
                                     return $a['position'] - $b['position'];
                                 }
-                                // Fallback: sort by id string (e.g. "block1", "block2")
                                 return strnatcmp($a['id'], $b['id']);
                             });
                         }
@@ -41,24 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // ✅ Encode cleaned/sorted data
+            // Encode and write
             $jsonData = json_encode($dataToSave, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
             if ($jsonData === false) {
-                echo json_encode(['success' => false, 'message' => 'Failed to encode JSON: ' . json_last_error_msg()]);
+                echo json_encode(['success' => false, 'message' => 'Failed to encode JSON']);
                 exit;
             }
 
-            // Atomic file save
             $tempFile = $jsonFile . '.tmp';
             if (file_put_contents($tempFile, $jsonData, LOCK_EX) === false) {
-                echo json_encode(['success' => false, 'message' => 'Failed to write temporary file']);
+                echo json_encode(['success' => false, 'message' => 'Failed to write temp file']);
                 exit;
             }
 
             if (!rename($tempFile, $jsonFile)) {
                 unlink($tempFile);
-                echo json_encode(['success' => false, 'message' => 'Failed to move temporary file']);
+                echo json_encode(['success' => false, 'message' => 'Failed to move file']);
                 exit;
             }
 
@@ -69,33 +65,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'fileSize' => filesize($jsonFile)
             ]);
         } catch (Exception $e) {
-            error_log("Save error: " . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
         exit;
     }
+
+    // Action: Add question to chapter
+    if (isset($postData['action']) && $postData['action'] === 'add_question') {
+        try {
+            if (!isset($postData['chapter_id'], $postData['question'])) {
+                echo json_encode(['success' => false, 'message' => 'Missing chapter ID or question']);
+                exit;
+            }
+
+            $chapterId = (int)$postData['chapter_id'];
+            $newQuestion = $postData['question'];
+
+            // Load existing data
+            $json = json_decode(file_get_contents($jsonFile), true);
+            $chapterFound = false;
+
+            foreach ($json['chapters'] as &$chapter) {
+                if ($chapter['id'] === $chapterId) {
+                    $lastId = 0;
+                    foreach ($chapter['questions'] as $q) {
+                        if ($q['id'] > $lastId) $lastId = $q['id'];
+                    }
+                    $newQuestion['id'] = $lastId + 1;
+                    $chapter['questions'][] = $newQuestion;
+                    $chapterFound = true;
+                    break;
+                }
+            }
+
+            if (!$chapterFound) {
+                echo json_encode(['success' => false, 'message' => 'Chapter not found']);
+                exit;
+            }
+
+            file_put_contents($jsonFile, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            echo json_encode(['success' => true, 'message' => 'Question added successfully']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // Default response for unknown action
+    echo json_encode(['success' => false, 'message' => 'Invalid action']);
+    exit;
 }
 
-// Load & validate file
+// ------------------ INITIALIZATION ------------------
+
 if (!file_exists($jsonFile)) {
-    die("Error: data.json file not found in " . __DIR__);
+    die("Error: data.json not found in " . __DIR__);
 }
+
 if (!is_readable($jsonFile)) {
-    die("Error: data.json file is not readable. Check file permissions.");
+    die("Error: data.json is not readable");
 }
 
 $jsonContent = file_get_contents($jsonFile);
-if ($jsonContent === false) {
-    die("Error: Could not read data.json file");
-}
-if (empty(trim($jsonContent))) {
-    die("Error: data.json file is empty");
-}
-
-// Decode or fallback
-$data = json_decode($jsonContent, true);
-
-if ($data === null) {
+if ($jsonContent === false || empty(trim($jsonContent))) {
     $sampleData = [
         'book_id' => 1150,
         'title' => 'Sample Book',
@@ -132,11 +164,10 @@ if ($data === null) {
             ]
         ]
     ];
-
     file_put_contents($jsonFile, json_encode($sampleData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    $data = $sampleData;
 }
 ?>
+
 
 
 

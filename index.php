@@ -1,91 +1,100 @@
 <!DOCTYPE html>
-
 <?php
 $jsonFile = 'data.json';
 
-// Handle AJAX requests for saving FIRST
+// Handle AJAX save request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
     $postData = json_decode($input, true);
-    
+
     if (!$postData) {
         $postData = $_POST;
     }
-    
+
     header('Content-Type: application/json');
-    
+
     if (isset($postData['action']) && $postData['action'] === 'save') {
         try {
-            // Validate data structure
             if (!isset($postData['data'])) {
                 echo json_encode(['success' => false, 'message' => 'No data provided']);
                 exit;
             }
-            
+
             $dataToSave = $postData['data'];
-            
-            // Save new data
+
+            // 🔁 Sort all blocks in every answer if needed
+            foreach ($dataToSave['chapters'] as &$chapter) {
+                foreach ($chapter['questions'] as &$question) {
+                    foreach ($question['answers'] as &$answer) {
+                        if (isset($answer['answer']['blocks']) && is_array($answer['answer']['blocks'])) {
+                            // If there's a 'position' key, sort by that
+                            usort($answer['answer']['blocks'], function ($a, $b) {
+                                // Prefer sorting by position if available
+                                if (isset($a['position'], $b['position'])) {
+                                    return $a['position'] - $b['position'];
+                                }
+                                // Fallback: sort by id string (e.g. "block1", "block2")
+                                return strnatcmp($a['id'], $b['id']);
+                            });
+                        }
+                    }
+                }
+            }
+
+            // ✅ Encode cleaned/sorted data
             $jsonData = json_encode($dataToSave, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-            
+
             if ($jsonData === false) {
                 echo json_encode(['success' => false, 'message' => 'Failed to encode JSON: ' . json_last_error_msg()]);
                 exit;
             }
-            
-            // Atomic write operation
+
+            // Atomic file save
             $tempFile = $jsonFile . '.tmp';
             if (file_put_contents($tempFile, $jsonData, LOCK_EX) === false) {
                 echo json_encode(['success' => false, 'message' => 'Failed to write temporary file']);
                 exit;
             }
-            
+
             if (!rename($tempFile, $jsonFile)) {
-                unlink($tempFile); // Clean up temp file
+                unlink($tempFile);
                 echo json_encode(['success' => false, 'message' => 'Failed to move temporary file']);
                 exit;
             }
-            
-            // Success response
+
             echo json_encode([
-                'success' => true, 
+                'success' => true,
                 'message' => 'Data saved successfully',
                 'timestamp' => date('Y-m-d H:i:s'),
                 'fileSize' => filesize($jsonFile)
             ]);
-            
         } catch (Exception $e) {
             error_log("Save error: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
         }
-        
         exit;
     }
 }
 
-// Check if file exists and is readable
+// Load & validate file
 if (!file_exists($jsonFile)) {
     die("Error: data.json file not found in " . __DIR__);
 }
-
 if (!is_readable($jsonFile)) {
     die("Error: data.json file is not readable. Check file permissions.");
 }
 
-// Get file contents
 $jsonContent = file_get_contents($jsonFile);
 if ($jsonContent === false) {
     die("Error: Could not read data.json file");
 }
-
-// Check if file is empty
 if (empty(trim($jsonContent))) {
     die("Error: data.json file is empty");
 }
 
-// First, try to decode as-is
+// Decode or fallback
 $data = json_decode($jsonContent, true);
 
-// If JSON is invalid, create sample data
 if ($data === null) {
     $sampleData = [
         'book_id' => 1150,
@@ -104,8 +113,8 @@ if ($data === null) {
                                 'user_id' => 1,
                                 'author_first_name' => 'User',
                                 'author_last_name' => '',
-                                'answer' => json_encode([
-                                    'time' => time() * 1000,
+                                'answer' => [
+                                    'time' => round(microtime(true) * 1000),
                                     'blocks' => [
                                         [
                                             'id' => 'block1',
@@ -115,7 +124,7 @@ if ($data === null) {
                                             ]
                                         ]
                                     ]
-                                ])
+                                ]
                             ]
                         ]
                     ]
@@ -123,11 +132,13 @@ if ($data === null) {
             ]
         ]
     ];
-    
+
     file_put_contents($jsonFile, json_encode($sampleData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     $data = $sampleData;
 }
 ?>
+
+
 
 <html lang="en">
 <head>

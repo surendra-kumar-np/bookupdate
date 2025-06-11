@@ -1,133 +1,92 @@
 <!DOCTYPE html>
+
 <?php
 $jsonFile = 'data.json';
 
-// header('Content-Type: application/json');
-
-// Handle POST requests
+// Handle AJAX requests for saving FIRST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
     $postData = json_decode($input, true);
-
+    
     if (!$postData) {
         $postData = $_POST;
     }
-
-    // Action: Save full data
+    
+    header('Content-Type: application/json');
+    
     if (isset($postData['action']) && $postData['action'] === 'save') {
         try {
+            // Validate data structure
             if (!isset($postData['data'])) {
                 echo json_encode(['success' => false, 'message' => 'No data provided']);
                 exit;
             }
-
+            
             $dataToSave = $postData['data'];
-
-            // Sort blocks in each answer
-            foreach ($dataToSave['chapters'] as &$chapter) {
-                foreach ($chapter['questions'] as &$question) {
-                    foreach ($question['answers'] as &$answer) {
-                        if (isset($answer['answer']['blocks']) && is_array($answer['answer']['blocks'])) {
-                            usort($answer['answer']['blocks'], function ($a, $b) {
-                                if (isset($a['position'], $b['position'])) {
-                                    return $a['position'] - $b['position'];
-                                }
-                                return strnatcmp($a['id'], $b['id']);
-                            });
-                        }
-                    }
-                }
-            }
-
-            // Encode and write
+            
+            // Save new data
             $jsonData = json_encode($dataToSave, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            
             if ($jsonData === false) {
-                echo json_encode(['success' => false, 'message' => 'Failed to encode JSON']);
+                echo json_encode(['success' => false, 'message' => 'Failed to encode JSON: ' . json_last_error_msg()]);
                 exit;
             }
-
+            
+            // Atomic write operation
             $tempFile = $jsonFile . '.tmp';
             if (file_put_contents($tempFile, $jsonData, LOCK_EX) === false) {
-                echo json_encode(['success' => false, 'message' => 'Failed to write temp file']);
+                echo json_encode(['success' => false, 'message' => 'Failed to write temporary file']);
                 exit;
             }
-
+            
             if (!rename($tempFile, $jsonFile)) {
-                unlink($tempFile);
-                echo json_encode(['success' => false, 'message' => 'Failed to move file']);
+                unlink($tempFile); // Clean up temp file
+                echo json_encode(['success' => false, 'message' => 'Failed to move temporary file']);
                 exit;
             }
-
+            
+            // Success response
             echo json_encode([
-                'success' => true,
+                'success' => true, 
                 'message' => 'Data saved successfully',
                 'timestamp' => date('Y-m-d H:i:s'),
                 'fileSize' => filesize($jsonFile)
             ]);
+            
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            error_log("Save error: " . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
         }
+        
         exit;
     }
-
-    // Action: Add question to chapter
-    if (isset($postData['action']) && $postData['action'] === 'add_question') {
-        try {
-            if (!isset($postData['chapter_id'], $postData['question'])) {
-                echo json_encode(['success' => false, 'message' => 'Missing chapter ID or question']);
-                exit;
-            }
-
-            $chapterId = (int)$postData['chapter_id'];
-            $newQuestion = $postData['question'];
-
-            // Load existing data
-            $json = json_decode(file_get_contents($jsonFile), true);
-            $chapterFound = false;
-
-            foreach ($json['chapters'] as &$chapter) {
-                if ($chapter['id'] === $chapterId) {
-                    $lastId = 0;
-                    foreach ($chapter['questions'] as $q) {
-                        if ($q['id'] > $lastId) $lastId = $q['id'];
-                    }
-                    $newQuestion['id'] = $lastId + 1;
-                    $chapter['questions'][] = $newQuestion;
-                    $chapterFound = true;
-                    break;
-                }
-            }
-
-            if (!$chapterFound) {
-                echo json_encode(['success' => false, 'message' => 'Chapter not found']);
-                exit;
-            }
-
-            file_put_contents($jsonFile, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            echo json_encode(['success' => true, 'message' => 'Question added successfully']);
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
-        }
-        exit;
-    }
-
-    // Default response for unknown action
-    echo json_encode(['success' => false, 'message' => 'Invalid action']);
-    exit;
 }
 
-// ------------------ INITIALIZATION ------------------
-
+// Check if file exists and is readable
 if (!file_exists($jsonFile)) {
-    die("Error: data.json not found in " . __DIR__);
+    die("Error: data.json file not found in " . __DIR__);
 }
 
 if (!is_readable($jsonFile)) {
-    die("Error: data.json is not readable");
+    die("Error: data.json file is not readable. Check file permissions.");
 }
 
+// Get file contents
 $jsonContent = file_get_contents($jsonFile);
-if ($jsonContent === false || empty(trim($jsonContent))) {
+if ($jsonContent === false) {
+    die("Error: Could not read data.json file");
+}
+
+// Check if file is empty
+if (empty(trim($jsonContent))) {
+    die("Error: data.json file is empty");
+}
+
+// First, try to decode as-is
+$data = json_decode($jsonContent, true);
+
+// If JSON is invalid, create sample data
+if ($data === null) {
     $sampleData = [
         'book_id' => 1150,
         'title' => 'Sample Book',
@@ -145,8 +104,8 @@ if ($jsonContent === false || empty(trim($jsonContent))) {
                                 'user_id' => 1,
                                 'author_first_name' => 'User',
                                 'author_last_name' => '',
-                                'answer' => [
-                                    'time' => round(microtime(true) * 1000),
+                                'answer' => json_encode([
+                                    'time' => time() * 1000,
                                     'blocks' => [
                                         [
                                             'id' => 'block1',
@@ -156,7 +115,7 @@ if ($jsonContent === false || empty(trim($jsonContent))) {
                                             ]
                                         ]
                                     ]
-                                ]
+                                ])
                             ]
                         ]
                     ]
@@ -164,12 +123,11 @@ if ($jsonContent === false || empty(trim($jsonContent))) {
             ]
         ]
     ];
+    
     file_put_contents($jsonFile, json_encode($sampleData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $data = $sampleData;
 }
 ?>
-
-
-
 
 <html lang="en">
 <head>

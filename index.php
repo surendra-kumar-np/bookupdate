@@ -7,13 +7,13 @@ $jsonFile = 'data.json';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
     $postData = json_decode($input, true);
-
+    
     if (!$postData) {
         $postData = $_POST;
     }
-
+    
     header('Content-Type: application/json');
-
+    
     if (isset($postData['action']) && $postData['action'] === 'save') {
         try {
             // Validate data structure
@@ -21,42 +21,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'message' => 'No data provided']);
                 exit;
             }
-
+            
             $dataToSave = $postData['data'];
-
+            
             // Save new data
             $jsonData = json_encode($dataToSave, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
+            
             if ($jsonData === false) {
                 echo json_encode(['success' => false, 'message' => 'Failed to encode JSON: ' . json_last_error_msg()]);
                 exit;
             }
-
+            
             // Atomic write operation
             $tempFile = $jsonFile . '.tmp';
             if (file_put_contents($tempFile, $jsonData, LOCK_EX) === false) {
                 echo json_encode(['success' => false, 'message' => 'Failed to write temporary file']);
                 exit;
             }
-
+            
             if (!rename($tempFile, $jsonFile)) {
                 unlink($tempFile); // Clean up temp file
                 echo json_encode(['success' => false, 'message' => 'Failed to move temporary file']);
                 exit;
             }
-
+            
             // Success response
             echo json_encode([
-                'success' => true,
+                'success' => true, 
                 'message' => 'Data saved successfully',
                 'timestamp' => date('Y-m-d H:i:s'),
                 'fileSize' => filesize($jsonFile)
             ]);
+            
         } catch (Exception $e) {
             error_log("Save error: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
         }
-
+        
         exit;
     }
 }
@@ -122,14 +123,13 @@ if ($data === null) {
             ]
         ]
     ];
-
+    
     file_put_contents($jsonFile, json_encode($sampleData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     $data = $sampleData;
 }
 ?>
 
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -164,7 +164,7 @@ if ($data === null) {
             padding: 0 24px;
             position: relative;
             z-index: 1000;
-            box-shadow: 0 1px 3px rgba(60, 64, 67, .1);
+            box-shadow: 0 1px 3px rgba(60,64,67,.1);
         }
 
         .header-left {
@@ -218,20 +218,9 @@ if ($data === null) {
             border: 1px solid #dadce0;
         }
 
-        .status-saving {
-            color: #1a73e8;
-            background: #e8f0fe;
-        }
-
-        .status-saved {
-            color: #137333;
-            background: #e6f4ea;
-        }
-
-        .status-error {
-            color: #d93025;
-            background: #fce8e6;
-        }
+        .status-saving { color: #1a73e8; background: #e8f0fe; }
+        .status-saved { color: #137333; background: #e6f4ea; }
+        .status-error { color: #d93025; background: #fce8e6; }
 
         .share-btn {
             background: #1a73e8;
@@ -374,7 +363,7 @@ if ($data === null) {
 
         .search-input:focus {
             border-color: #1a73e8;
-            box-shadow: 0 0 0 2px rgba(26, 115, 232, .2);
+            box-shadow: 0 0 0 2px rgba(26,115,232,.2);
         }
 
         .questions-container {
@@ -437,7 +426,7 @@ if ($data === null) {
             max-height: 1056px;
             margin: 0 auto 24px;
             padding: 96px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, .1);
+            box-shadow: 0 2px 10px rgba(0,0,0,.1);
             border-radius: 2px;
             position: relative;
             overflow: hidden;
@@ -497,46 +486,24 @@ if ($data === null) {
         }
 
         /* Content Formatting */
-        .page-content h1,
-        .page-content h2,
-        .page-content h3,
-        .page-content h4,
-        .page-content h5,
-        .page-content h6 {
+        .page-content h1, .page-content h2, .page-content h3, 
+        .page-content h4, .page-content h5, .page-content h6 {
             margin: 16px 0 8px 0;
             font-weight: bold;
         }
 
-        .page-content h1 {
-            font-size: 20pt;
-        }
-
-        .page-content h2 {
-            font-size: 16pt;
-        }
-
-        .page-content h3 {
-            font-size: 14pt;
-        }
-
-        .page-content h4 {
-            font-size: 12pt;
-        }
-
-        .page-content h5 {
-            font-size: 11pt;
-        }
-
-        .page-content h6 {
-            font-size: 10pt;
-        }
+        .page-content h1 { font-size: 20pt; }
+        .page-content h2 { font-size: 16pt; }
+        .page-content h3 { font-size: 14pt; }
+        .page-content h4 { font-size: 12pt; }
+        .page-content h5 { font-size: 11pt; }
+        .page-content h6 { font-size: 10pt; }
 
         .page-content p {
             margin: 0 0 12px 0;
         }
 
-        .page-content ul,
-        .page-content ol {
+        .page-content ul, .page-content ol {
             margin: 12px 0;
             padding-left: 36px;
         }
@@ -558,7 +525,7 @@ if ($data === null) {
             height: auto;
             margin: 12px 0;
             border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+            box-shadow: 0 2px 8px rgba(0,0,0,.1);
         }
 
         .page-content table {
@@ -567,8 +534,7 @@ if ($data === null) {
             margin: 12px 0;
         }
 
-        .page-content th,
-        .page-content td {
+        .page-content th, .page-content td {
             border: 1px solid #dadce0;
             padding: 8px 12px;
             text-align: left;
@@ -600,13 +566,8 @@ if ($data === null) {
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* Print Styles */
@@ -616,29 +577,27 @@ if ($data === null) {
                 margin: 0;
                 padding: 0;
             }
-
-            .header,
-            .toolbar-container,
-            .sidebar {
+            
+            .header, .toolbar-container, .sidebar {
                 display: none !important;
             }
-
+            
             .main-layout {
                 display: block;
             }
-
+            
             .editor-area {
                 padding: 0;
                 background: white;
             }
-
+            
             .document-page {
                 margin: 0;
                 box-shadow: none;
                 border-radius: 0;
                 page-break-after: always;
             }
-
+            
             .document-page:last-child {
                 page-break-after: avoid;
             }
@@ -664,7 +623,6 @@ if ($data === null) {
         }
     </style>
 </head>
-
 <body>
     <!-- Google Docs Header -->
     <div class="header">
@@ -819,17 +777,17 @@ if ($data === null) {
 
         function initializeApp() {
             console.log('🚀 Initializing application...');
-
+            
             if (!data || !data.chapters) {
                 console.error('❌ No data loaded');
                 updateStatus('Error: No data loaded', 'status-error');
                 return;
             }
-
+            
             loadSidebar();
             setupEventListeners();
             updateStatus('Ready to edit', 'status-saved');
-
+            
             // Auto-load first question
             if (data.chapters.length > 0 && data.chapters[0].questions && data.chapters[0].questions.length > 0) {
                 setTimeout(() => {
@@ -849,7 +807,7 @@ if ($data === null) {
             }
 
             let totalQuestions = 0;
-
+            
             data.chapters.forEach((chapter, chapterIndex) => {
                 if (chapter.questions && chapter.questions.length > 0) {
                     chapter.questions.forEach((question, questionIndex) => {
@@ -859,15 +817,15 @@ if ($data === null) {
                             <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
                             <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
                         `;
-
+                        
                         questionItem.onclick = () => {
                             loadQuestion(chapterIndex, questionIndex);
-
+                            
                             // Update active state
                             document.querySelectorAll('.question-item').forEach(item => item.classList.remove('active'));
                             questionItem.classList.add('active');
                         };
-
+                        
                         container.appendChild(questionItem);
                         totalQuestions++;
                     });
@@ -882,7 +840,7 @@ if ($data === null) {
         // Load Question Content
         function loadQuestion(chapterIndex, questionIndex) {
             if (isLoading) return;
-
+            
             // Save current content before switching
             if (currentChapter >= 0 && currentQuestion >= 0) {
                 saveCurrentContent();
@@ -895,7 +853,7 @@ if ($data === null) {
             currentQuestion = questionIndex;
 
             const question = data.chapters[chapterIndex].questions[questionIndex];
-
+            
             // Load question content
             let content = '';
             if (question.answers && question.answers[0] && question.answers[0].answer) {
@@ -927,12 +885,12 @@ if ($data === null) {
                     <div class="page-number">Page 1</div>
                 </div>
             `;
-
+            
             currentPageCount = 1;
-
+            
             // Setup event listeners
             setupPageEventListeners(1);
-
+            
             // Check for page overflow
             setTimeout(() => {
                 checkForOverflow();
@@ -954,17 +912,17 @@ if ($data === null) {
                 switch (block.type) {
                     case 'paragraph':
                         return `<p>${block.data?.text || ''}</p>`;
-
+                        
                     case 'header':
                         const level = block.data?.level || 1;
                         return `<h${level}>${block.data?.text || ''}</h${level}>`;
-
+                        
                     case 'list':
                         if (!block.data?.items) return '<ul><li>Empty list</li></ul>';
                         const listType = block.data.style === 'ordered' ? 'ol' : 'ul';
                         const items = block.data.items.map(item => `<li>${item}</li>`).join('');
                         return `<${listType}>${items}</${listType}>`;
-
+                        
                     default:
                         return `<p>${block.data?.text || `[${block.type}]`}</p>`;
                 }
@@ -975,13 +933,13 @@ if ($data === null) {
         function convertHTMLToBlocks(html) {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
-
+            
             const blocks = [];
             let blockId = 1;
-
+            
             Array.from(tempDiv.children).forEach(element => {
                 const tagName = element.tagName.toLowerCase();
-
+                
                 if (tagName.match(/^h[1-6]$/)) {
                     blocks.push({
                         id: `block_${blockId++}`,
@@ -1011,150 +969,140 @@ if ($data === null) {
                     });
                 }
             });
-
+            
             return blocks;
         }
 
         // CLEAN PAGE MANAGEMENT - NO ERRORS
         function checkForOverflow() {
-            let changed = false;
-
-            // Forward check: Overflow
-            for (let i = 1; i <= currentPageCount; i++) {
-                const pageContent = document.getElementById(`pageContent-${i}`);
-                if (pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
-                    const nextPageNum = i + 1;
-
+            console.log(`🔍 Checking for overflow...`);
+            
+            // Check each page
+            for (let pageNum = 1; pageNum <= currentPageCount; pageNum++) {
+                const pageContent = document.getElementById(`pageContent-${pageNum}`);
+                if (pageContent && pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
+                    console.log(`📄 Page ${pageNum} overflowed: ${pageContent.scrollHeight}px > ${MAX_PAGE_HEIGHT}px`);
+                    
+                    const nextPageNum = pageNum + 1;
+                    
+                    // Create next page if needed
                     if (!document.getElementById(`page-${nextPageNum}`)) {
                         createNextPage(nextPageNum);
                     }
-
-                    moveContentToNextPage(i, nextPageNum);
-                    changed = true;
+                    
+                    // Move content
+                    moveContentToNextPage(pageNum, nextPageNum);
+                    break;
                 }
-            }
-
-            // Backward check: Underflow (pull content back)
-            for (let i = currentPageCount; i > 1; i--) {
-                const pageContent = document.getElementById(`pageContent-${i}`);
-                const prevContent = document.getElementById(`pageContent-${i - 1}`);
-
-                if (
-                    pageContent.childNodes.length > 0 &&
-                    prevContent.scrollHeight < MAX_PAGE_HEIGHT - 100 // buffer
-                ) {
-                    moveContentToPrevPage(i, i - 1);
-                    changed = true;
-                }
-            }
-
-            if (changed) {
-                setTimeout(() => checkForOverflow(), 100); // loop until stable
             }
         }
 
         // CREATE NEXT PAGE - SIMPLE AND CLEAN
-        function createNextPage(pageNum) {
+        function createNextPage(pageNumber) {
             const wrapper = document.getElementById('documentWrapper');
+            
             const newPage = document.createElement('div');
             newPage.className = 'document-page';
-            newPage.id = `page-${pageNum}`;
+            newPage.id = `page-${pageNumber}`;
+            
             newPage.innerHTML = `
-                    <div class="page-header"></div>
-                    <div class="page-content" id="pageContent-${pageNum}" contenteditable="true"></div>
-                    <div class="page-number">Page ${pageNum}</div>
-                `;
+                <div class="page-content" id="pageContent-${pageNumber}" contenteditable="true">
+                </div>
+                <div class="page-number">Page ${pageNumber}</div>
+            `;
+            
             wrapper.appendChild(newPage);
-            currentPageCount = pageNum;
-
-            setupPageEventListeners(pageNum); // optional if you need per-page events
+            currentPageCount = pageNumber;
+            
+            setupPageEventListeners(pageNumber);
+            
+            console.log(`✅ Created page ${pageNumber}. Total pages: ${currentPageCount}`);
         }
 
         // MOVE CONTENT TO NEXT PAGE - SIMPLE AND CLEAN
-        function moveContentToNextPage(from, to) {
-            const fromContent = document.getElementById(`pageContent-${from}`);
-            const toContent = document.getElementById(`pageContent-${to}`);
-            if (!fromContent || !toContent) return;
-
-            let moved = false;
-
-            while (fromContent.scrollHeight > MAX_PAGE_HEIGHT && fromContent.lastChild) {
-                const last = fromContent.lastChild;
-                fromContent.removeChild(last);
-                toContent.insertBefore(last, toContent.firstChild);
-                moved = true;
+        function moveContentToNextPage(fromPageNum, toPageNum) {
+            const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
+            const toPage = document.getElementById(`pageContent-${toPageNum}`);
+            
+            if (!fromPage || !toPage) return;
+            
+            console.log(`📋 Moving content from page ${fromPageNum} to page ${toPageNum}`);
+            
+            const elements = Array.from(fromPage.children);
+            let totalHeight = 0;
+            let splitIndex = elements.length;
+            
+            // Find where to split
+            for (let i = 0; i < elements.length; i++) {
+                const elementHeight = elements[i].offsetHeight + 20;
+                if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
+                    splitIndex = i;
+                    break;
+                }
+                totalHeight += elementHeight;
             }
-
-            return moved;
+            
+            // Move elements
+            if (splitIndex < elements.length) {
+                const elementsToMove = elements.slice(splitIndex);
+                
+                elementsToMove.forEach(element => {
+                    toPage.appendChild(element);
+                });
+                
+                console.log(`✅ Moved ${elementsToMove.length} elements to page ${toPageNum}`);
+                
+                // Check if next page also overflows
+                setTimeout(() => {
+                    if (toPage.scrollHeight > MAX_PAGE_HEIGHT) {
+                        checkForOverflow();
+                    }
+                }, 100);
+            }
         }
 
-        function moveContentToPrevPage(from, to) {
-            const fromContent = document.getElementById(`pageContent-${from}`);
-            const toContent = document.getElementById(`pageContent-${to}`);
-            if (!fromContent || !toContent) return;
-
-            let moved = false;
-
-            while (
-                fromContent.firstChild &&
-                toContent.scrollHeight + fromContent.firstChild.scrollHeight <= MAX_PAGE_HEIGHT
-            ) {
-                const first = fromContent.firstChild;
-                fromContent.removeChild(first);
-                toContent.appendChild(first);
-                moved = true;
-            }
-
-            return moved;
-        }
-
-        document.addEventListener('input', function(e) {
-            if (e.target && e.target.closest('.page-content')) {
-                setTimeout(() => checkForOverflow(), 200);
-            }
-        });
         // GOOGLE DOCS ENTER KEY BEHAVIOR - CLEAN AND SIMPLE
         function setupPageEventListeners(pageNumber) {
             const pageContent = document.getElementById(`pageContent-${pageNumber}`);
             if (!pageContent) return;
-
+            
             console.log(`🎧 Setting up listeners for page ${pageNumber}`);
-
+            
             pageContent.addEventListener('input', () => {
                 updateStatus('Editing...', 'status-saving');
                 clearTimeout(autoSaveTimer);
                 clearTimeout(pageBreakTimer);
-
+                
                 pageBreakTimer = setTimeout(() => {
                     checkForOverflow();
                 }, 200);
-
+                
                 autoSaveTimer = setTimeout(() => {
                     saveCurrentContent();
                 }, 2000);
             });
-
+            
             // ENTER KEY HANDLER
             pageContent.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     console.log(`🔥 ENTER pressed on page ${pageNumber}!`);
-
+                    
                     // Check after Enter creates content
                     requestAnimationFrame(() => {
                         const currentHeight = pageContent.scrollHeight;
                         console.log(`📏 Page ${pageNumber} height: ${currentHeight}px (max: ${MAX_PAGE_HEIGHT}px)`);
-
+                        
                         if (currentHeight > MAX_PAGE_HEIGHT) {
                             console.log(`🚨 OVERFLOW on page ${pageNumber}! Moving to next page...`);
-
+                            
                             const nextPageNum = pageNumber + 1;
                             console.log(`🎯 Target: Page ${nextPageNum}`);
-
+                            
                             // Create next page if needed
                             if (!document.getElementById(`page-${nextPageNum}`)) {
                                 createNextPage(nextPageNum);
                             }
-
+                            
                             // Move content and cursor
                             setTimeout(() => {
                                 moveContentAndCursor(pageNumber, nextPageNum);
@@ -1169,48 +1117,48 @@ if ($data === null) {
         function moveContentAndCursor(fromPageNum, toPageNum) {
             const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
             const toPage = document.getElementById(`pageContent-${toPageNum}`);
-
+            
             if (!fromPage || !toPage) {
                 console.error(`❌ Pages not found: from=${fromPageNum}, to=${toPageNum}`);
                 return;
             }
-
+            
             console.log(`🎯 Moving content and cursor: ${fromPageNum} → ${toPageNum}`);
-
+            
             // Get all elements from the overflowing page
             const allElements = Array.from(fromPage.children);
             if (allElements.length === 0) {
                 console.log(`📝 No elements to move, creating new paragraph on page ${toPageNum}`);
-
+                
                 // Create new paragraph on target page
                 const newPara = document.createElement('p');
                 newPara.innerHTML = '<br>';
                 toPage.appendChild(newPara);
-
+                
                 // Focus and position cursor
                 setTimeout(() => {
                     toPage.focus();
-
+                    
                     const range = document.createRange();
                     range.setStart(newPara, 0);
                     range.collapse(true);
-
+                    
                     const selection = window.getSelection();
                     selection.removeAllRanges();
                     selection.addRange(range);
-
+                    
                     console.log(`✅ Cursor moved to new paragraph on page ${toPageNum}`);
                 }, 50);
                 return;
             }
-
+            
             // Calculate what should stay vs what should move
             let totalHeight = 0;
             let moveFromIndex = allElements.length; // Default: move nothing
-
+            
             for (let i = 0; i < allElements.length; i++) {
                 const elementHeight = allElements[i].offsetHeight + 20;
-
+                
                 if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
                     // If this is the first element that causes overflow, we need to move at least this element
                     moveFromIndex = Math.max(1, i); // Move at least 1 element
@@ -1219,29 +1167,29 @@ if ($data === null) {
                 }
                 totalHeight += elementHeight;
             }
-
+            
             // Move the overflowing elements
             if (moveFromIndex < allElements.length) {
                 const elementsToMove = allElements.slice(moveFromIndex);
                 console.log(`📋 Moving ${elementsToMove.length} elements from page ${fromPageNum} to page ${toPageNum}`);
-
+                
                 // Move each element to the target page
                 elementsToMove.forEach((element, index) => {
                     console.log(`📄 Moving element ${index + 1}: ${element.tagName}`);
                     toPage.appendChild(element);
                 });
-
+                
                 // Focus the target page and position cursor at the first moved element
                 setTimeout(() => {
                     console.log(`🎯 Focusing page ${toPageNum}`);
                     toPage.focus();
-
+                    
                     if (elementsToMove.length > 0) {
                         const firstMovedElement = elementsToMove[0];
-
+                        
                         try {
                             const range = document.createRange();
-
+                            
                             // Position cursor at the beginning of the first moved element
                             if (firstMovedElement.firstChild && firstMovedElement.firstChild.nodeType === Node.TEXT_NODE) {
                                 range.setStart(firstMovedElement.firstChild, 0);
@@ -1250,23 +1198,23 @@ if ($data === null) {
                             } else {
                                 range.setStart(firstMovedElement, 0);
                             }
-
+                            
                             range.collapse(true);
-
+                            
                             const selection = window.getSelection();
                             selection.removeAllRanges();
                             selection.addRange(range);
-
+                            
                             console.log(`✅ Cursor positioned at first moved element on page ${toPageNum}`);
                         } catch (error) {
                             console.error('Error positioning cursor:', error);
-
+                            
                             // Fallback: position at the beginning of the page
                             if (toPage.firstChild) {
                                 const range = document.createRange();
                                 range.setStart(toPage.firstChild, 0);
                                 range.collapse(true);
-
+                                
                                 const selection = window.getSelection();
                                 selection.removeAllRanges();
                                 selection.addRange(range);
@@ -1277,32 +1225,32 @@ if ($data === null) {
             } else {
                 // No elements to move, but still focus next page
                 console.log(`🎯 No elements to move, just focusing page ${toPageNum}`);
-
+                
                 setTimeout(() => {
                     toPage.focus();
-
+                    
                     // If target page is empty, create a paragraph
                     if (toPage.children.length === 0) {
                         const newPara = document.createElement('p');
                         newPara.innerHTML = '<br>';
                         toPage.appendChild(newPara);
                     }
-
+                    
                     // Position cursor at beginning of target page
                     if (toPage.firstChild) {
                         const range = document.createRange();
                         range.setStart(toPage.firstChild, 0);
                         range.collapse(true);
-
+                        
                         const selection = window.getSelection();
                         selection.removeAllRanges();
                         selection.addRange(range);
                     }
-
+                    
                     console.log(`✅ Cursor positioned on page ${toPageNum}`);
                 }, 100);
             }
-
+            
             // Check if the target page also overflows after moving content
             setTimeout(() => {
                 const targetHeight = toPage.scrollHeight;
@@ -1316,23 +1264,20 @@ if ($data === null) {
         function getAllContent() {
             let allContent = '';
             let title = '';
-
+            
             const titleInput = document.getElementById('questionTitle');
             if (titleInput) {
                 title = titleInput.value;
             }
-
+            
             for (let i = 1; i <= currentPageCount; i++) {
                 const pageContent = document.getElementById(`pageContent-${i}`);
                 if (pageContent) {
                     allContent += pageContent.innerHTML;
                 }
             }
-
-            return {
-                title,
-                content: allContent
-            };
+            
+            return { title, content: allContent };
         }
 
         // Auto-save
@@ -1342,33 +1287,30 @@ if ($data === null) {
             const allData = getAllContent();
             const title = allData.title;
             const content = allData.content;
-
+            
             // Update question title
             data.chapters[currentChapter].questions[currentQuestion].title = title;
-
+            
             // Convert HTML to blocks and save
             const blocks = convertHTMLToBlocks(content);
-
+            
             if (!data.chapters[currentChapter].questions[currentQuestion].answers) {
                 data.chapters[currentChapter].questions[currentQuestion].answers = [{
                     id: 1,
                     user_id: 1,
                     author_first_name: "User",
                     author_last_name: "",
-                    answer: JSON.stringify({
-                        time: Date.now(),
-                        blocks: blocks
-                    })
+                    answer: JSON.stringify({ time: Date.now(), blocks: blocks })
                 }];
             } else {
-                data.chapters[currentChapter].questions[currentQuestion].answers[0].answer = JSON.stringify({
-                    time: Date.now(),
-                    blocks: blocks
+                data.chapters[currentChapter].questions[currentQuestion].answers[0].answer = JSON.stringify({ 
+                    time: Date.now(), 
+                    blocks: blocks 
                 });
             }
 
             updateStatus('Auto-saved locally', 'status-saved');
-
+            
             // Trigger server save
             autoSaveCount++;
             if (autoSaveCount >= 5 || (Date.now() - lastServerSave) > 30000) {
@@ -1380,7 +1322,7 @@ if ($data === null) {
         function saveToServer() {
             console.log('🌐 Saving to server...');
             updateStatus('Syncing to server...', 'status-saving');
-
+            
             const saveData = {
                 action: 'save',
                 data: data
@@ -1389,7 +1331,7 @@ if ($data === null) {
             const xhr = new XMLHttpRequest();
             xhr.open('POST', window.location.href, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-
+            
             xhr.onload = function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try {
@@ -1399,7 +1341,7 @@ if ($data === null) {
                             updateStatus('Server error: HTML response', 'status-error');
                             return;
                         }
-
+                        
                         const result = JSON.parse(xhr.responseText);
                         if (result.success) {
                             updateStatus('Synced to server', 'status-saved');
@@ -1417,12 +1359,12 @@ if ($data === null) {
                     updateStatus('Server error: ' + xhr.status, 'status-error');
                 }
             };
-
+            
             xhr.onerror = function() {
                 console.error('❌ Network error');
                 updateStatus('Network error', 'status-error');
             };
-
+            
             try {
                 xhr.send(JSON.stringify(saveData));
             } catch (error) {
@@ -1436,7 +1378,7 @@ if ($data === null) {
             if (currentChapter >= 0 && currentQuestion >= 0) {
                 saveCurrentContent();
             }
-
+            
             updateStatus('Saving all data...', 'status-saving');
             saveToServer();
         }
@@ -1444,13 +1386,13 @@ if ($data === null) {
         // Export to PDF (Basic version)
         function exportToPDF() {
             updateStatus('Generating PDF...', 'status-saving');
-
+            
             if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
                 alert('PDF library not loaded. Please refresh the page and try again.');
                 updateStatus('PDF export failed', 'status-error');
                 return;
             }
-
+            
             try {
                 let jsPDF;
                 if (window.jspdf && window.jspdf.jsPDF) {
@@ -1460,20 +1402,20 @@ if ($data === null) {
                 } else {
                     throw new Error('jsPDF not found');
                 }
-
+                
                 const pdf = new jsPDF('p', 'mm', 'a4');
-
+                
                 pdf.setFontSize(16);
                 pdf.text('Book Export', 20, 20);
-
+                
                 pdf.setFontSize(12);
                 pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
-
+                
                 const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
                 pdf.save(fileName);
-
+                
                 updateStatus('PDF exported successfully', 'status-saved');
-
+                
             } catch (error) {
                 console.error('PDF Export Error:', error);
                 alert('Error generating PDF: ' + error.message);
@@ -1533,7 +1475,7 @@ if ($data === null) {
             });
 
             document.addEventListener('selectionchange', updateToolbarState);
-
+            
             // Setup first page listeners
             setupPageEventListeners(1);
         }
@@ -1559,7 +1501,7 @@ if ($data === null) {
         function alignText(alignment) {
             const commands = {
                 'left': 'justifyLeft',
-                'center': 'justifyCenter',
+                'center': 'justifyCenter', 
                 'right': 'justifyRight',
                 'justify': 'justifyFull'
             };
@@ -1606,13 +1548,13 @@ if ($data === null) {
         function filterQuestions(searchTerm) {
             const container = document.getElementById('questionsContainer');
             const items = container.querySelectorAll('.question-item');
-
+            
             items.forEach(item => {
                 const chapterText = item.querySelector('.question-chapter').textContent.toLowerCase();
                 const questionText = item.querySelector('.question-title').textContent.toLowerCase();
-                const matches = chapterText.includes(searchTerm.toLowerCase()) ||
-                    questionText.includes(searchTerm.toLowerCase());
-
+                const matches = chapterText.includes(searchTerm.toLowerCase()) || 
+                               questionText.includes(searchTerm.toLowerCase());
+                
                 item.style.display = matches ? 'block' : 'none';
             });
         }
@@ -1620,11 +1562,10 @@ if ($data === null) {
         function updateStatus(message, className) {
             const statusText = document.getElementById('statusText');
             const statusIndicator = document.getElementById('statusIndicator');
-
+            
             statusText.textContent = message;
             statusIndicator.className = 'status-indicator ' + className;
         }
     </script>
 </body>
-
 </html>

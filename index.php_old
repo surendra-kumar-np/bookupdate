@@ -414,24 +414,6 @@ if ($data === null) {
             line-height: 1.4;
         }
 
-        /* 
-        .question-title-input {
-            width: 100%;
-            font-size: 24px;
-            font-weight: 400;
-            color: #3c4043;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-family: 'Google Sans', sans-serif;
-            padding: 8px 0;
-            resize: none;
-            line-height: 1.4;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-        } */
-
         /* Editor Area */
         .editor-area {
             flex: 1;
@@ -914,98 +896,114 @@ if ($data === null) {
 
             const question = data.chapters[chapterIndex].questions[questionIndex];
 
-            // Load question content
-            let content = '';
+            // Load question title
+            let questionTitle = question.title || '';
+
+            // Prepare content
+            let htmlBlocks = [];
             if (question.answers && question.answers[0] && question.answers[0].answer) {
                 try {
                     const answerData = JSON.parse(question.answers[0].answer);
-                    if (answerData.blocks && Array.isArray(answerData.blocks)) {
-                        content = convertBlocksToHTML(answerData.blocks);
-                    } else {
-                        content = '<p>Start writing your answer here...</p>';
-                    }
+                    htmlBlocks = convertBlocksToHTML(answerData.blocks);
                 } catch (error) {
-                    console.error('Error parsing answer:', error);
-                    content = '<p>Error loading content. Start writing here...</p>';
+                    console.error('Error parsing answer blocks:', error);
+                    htmlBlocks = ['<p>Error loading content. Start writing here...</p>'];
                 }
             } else {
-                content = '<p>Start writing your answer here...</p>';
+                htmlBlocks = ['<p>Start writing your answer here...</p>'];
             }
 
-            // Reset to single page and load content
+            // Reset wrapper
             const wrapper = document.getElementById('documentWrapper');
-            wrapper.innerHTML = `
-                <div class="document-page" id="page-1">
-                    <div class="page-header">
-                        <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title..." value="${question.title || ''}">
-                    </div>
-                    <div class="page-content" id="pageContent-1" contenteditable="true">
-                        ${content}
-                    </div>
-                    <div class="page-number">Page 1</div>
-                </div>
-            `;
+            wrapper.innerHTML = '';
 
+            // Start with first page
+            let pageNum = 1;
             currentPageCount = 1;
+            const createPage = (num) => {
+                const page = document.createElement('div');
+                page.className = 'document-page';
+                page.id = `page-${num}`;
+                page.innerHTML = `
+            ${num === 1 ? `
+            <div class="page-header">
+                <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title..." value="${questionTitle}">
+            </div>` : ''}
+            <div class="page-content" id="pageContent-${num}" contenteditable="true"></div>
+            <div class="page-number">Page ${num}</div>
+        `;
+                wrapper.appendChild(page);
+                setupPageEventListeners(num);
+                return page;
+            };
 
-            // Setup event listeners
-            setupPageEventListeners(1);
+            let page = createPage(pageNum);
+            let contentDiv = page.querySelector('.page-content');
 
-            // Check for page overflow
+            htmlBlocks.forEach(html => {
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                const node = temp.firstChild;
+
+                contentDiv.appendChild(node);
+
+                // Overflow check
+                if (contentDiv.scrollHeight > MAX_PAGE_HEIGHT) {
+                    contentDiv.removeChild(node);
+                    pageNum++;
+                    currentPageCount = pageNum;
+                    page = createPage(pageNum);
+                    contentDiv = page.querySelector('.page-content');
+                    contentDiv.appendChild(node);
+                }
+            });
+
+            // Small delay to trigger auto-pagination for long content
             setTimeout(() => {
                 checkForOverflow();
+                updateStatus('Loaded successfully', 'status-saved');
+                isLoading = false;
             }, 100);
-
-            isLoading = false;
-            updateStatus('Loaded successfully', 'status-saved');
         }
+
 
         // Convert Blocks to HTML
         function convertBlocksToHTML(blocks) {
-            if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
-                return '<p>Start writing your answer here...</p>';
-            }
-
             return blocks.map(block => {
-                if (!block || !block.type) return '';
-
                 switch (block.type) {
-                    case 'paragraph':
-                        return `<p>${block.data?.text || ''}</p>`;
-
                     case 'header':
-                        const level = block.data?.level || 1;
-                        return `<h${level}>${block.data?.text || ''}</h${level}>`;
-
+                        return `<h${block.data.level}>${block.data.text}</h${block.data.level}>`;
+                    case 'paragraph':
+                        return `<p>${block.data.text}</p>`;
                     case 'list':
-                        if (!block.data?.items) return '<ul><li>Empty list</li></ul>';
-                        const listType = block.data.style === 'ordered' ? 'ol' : 'ul';
-                        const items = block.data.items.map(item => `<li>${item}</li>`).join('');
-                        return `<${listType}>${items}</${listType}>`;
-
+                        const tag = block.data.style === 'ordered' ? 'ol' : 'ul';
+                        return `<${tag}>${block.data.items.map(item => `<li>${item}</li>`).join('')}</${tag}>`;
                     default:
-                        return `<p>${block.data?.text || `[${block.type}]`}</p>`;
+                        return `<p>${block.data.text}</p>`;
                 }
-            }).filter(html => html).join('') || '<p>Start writing your answer here...</p>';
+            });
         }
 
         // Convert HTML to Blocks
-        function convertHTMLToBlocks(html) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-
+        function convertHTMLToBlocks(htmlArray) {
             const blocks = [];
             let blockId = 1;
 
-            Array.from(tempDiv.children).forEach(element => {
-                const tagName = element.tagName.toLowerCase();
+            htmlArray.forEach(html => {
+                const temp = document.createElement('div');
+                temp.innerHTML = html.trim();
+                const el = temp.firstElementChild;
+
+                if (!el) return;
+
+                const tagName = el.tagName.toLowerCase();
 
                 if (tagName.match(/^h[1-6]$/)) {
                     blocks.push({
                         id: `block_${blockId++}`,
                         type: 'header',
                         data: {
-                            text: element.textContent,
+                            text: el.innerHTML,
                             level: parseInt(tagName.substring(1))
                         }
                     });
@@ -1014,17 +1012,26 @@ if ($data === null) {
                         id: `block_${blockId++}`,
                         type: 'paragraph',
                         data: {
-                            text: element.innerHTML
+                            text: el.innerHTML
                         }
                     });
                 } else if (tagName === 'ul' || tagName === 'ol') {
-                    const items = Array.from(element.children).map(li => li.textContent);
+                    const items = Array.from(el.children).map(li => li.innerHTML);
                     blocks.push({
                         id: `block_${blockId++}`,
                         type: 'list',
                         data: {
                             style: tagName === 'ol' ? 'ordered' : 'unordered',
-                            items: items
+                            items
+                        }
+                    });
+                } else {
+                    // fallback
+                    blocks.push({
+                        id: `block_${blockId++}`,
+                        type: 'paragraph',
+                        data: {
+                            text: el.outerHTML
                         }
                     });
                 }
@@ -1033,29 +1040,42 @@ if ($data === null) {
             return blocks;
         }
 
+
         // CLEAN PAGE MANAGEMENT - NO ERRORS
         function checkForOverflow() {
-            console.log(`🔍 Checking for overflow...`);
+    console.log(`🔍 Checking for overflow...`);
+    for (let i = 1; i <= currentPageCount; i++) {
+        const page = document.getElementById(`page-${i}`);
+        const content = page?.querySelector('.page-content');
+        if (!content) continue;
 
-            // Check each page
-            for (let pageNum = 1; pageNum <= currentPageCount; pageNum++) {
-                const pageContent = document.getElementById(`pageContent-${pageNum}`);
-                if (pageContent && pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
-                    console.log(`📄 Page ${pageNum} overflowed: ${pageContent.scrollHeight}px > ${MAX_PAGE_HEIGHT}px`);
+        while (content.scrollHeight > MAX_PAGE_HEIGHT && content.childElementCount > 1) {
+            const nextPageNum = i + 1;
+            if (!document.getElementById(`page-${nextPageNum}`)) {
+                createNextPage(nextPageNum);
+            }
+            const nextContent = document.getElementById(`pageContent-${nextPageNum}`);
+            const lastChild = content.lastElementChild;
+            nextContent.insertBefore(lastChild, nextContent.firstChild);
+        }
 
-                    const nextPageNum = pageNum + 1;
-
-                    // Create next page if needed
-                    if (!document.getElementById(`page-${nextPageNum}`)) {
-                        createNextPage(nextPageNum);
-                    }
-
-                    // Move content
-                    moveContentToNextPage(pageNum, nextPageNum);
-                    break;
+        // Reflow upward if needed (content was deleted)
+        const prevPage = document.getElementById(`page-${i - 1}`);
+        if (prevPage) {
+            const prevContent = prevPage.querySelector('.page-content');
+            const firstChild = content.firstElementChild;
+            if (firstChild && content.scrollHeight < MAX_PAGE_HEIGHT - 40) {
+                const prevLast = prevContent.lastElementChild;
+                if (prevLast && prevContent.scrollHeight + prevLast.offsetHeight < MAX_PAGE_HEIGHT) {
+                    content.insertBefore(prevLast, content.firstChild);
                 }
             }
         }
+    }
+}
+
+
+
 
         // CREATE NEXT PAGE - SIMPLE AND CLEAN
         function createNextPage(pageNumber) {
@@ -1123,57 +1143,195 @@ if ($data === null) {
 
         // GOOGLE DOCS ENTER KEY BEHAVIOR - CLEAN AND SIMPLE
         function setupPageEventListeners(pageNumber) {
-            const pageContent = document.getElementById(`pageContent-${pageNumber}`);
-            if (!pageContent) return;
+    const pageContent = document.getElementById(`pageContent-${pageNumber}`);
+    if (!pageContent) return;
 
-            console.log(`🎧 Setting up listeners for page ${pageNumber}`);
+    console.log(`🎧 Setting up listeners for page ${pageNumber}`);
 
-            pageContent.addEventListener('input', () => {
-                updateStatus('Editing...', 'status-saving');
-                clearTimeout(autoSaveTimer);
-                clearTimeout(pageBreakTimer);
+    const debounceOverflowCheck = () => {
+        clearTimeout(pageBreakTimer);
+        pageBreakTimer = setTimeout(() => {
+            checkForOverflow();
+        }, 100);
+    };
 
-                pageBreakTimer = setTimeout(() => {
-                    checkForOverflow();
-                }, 200);
+    const debounceSave = () => {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => {
+            saveCurrentContent();
+        }, 2000);
+    };
 
-                autoSaveTimer = setTimeout(() => {
-                    saveCurrentContent();
-                }, 2000);
-            });
+    // Unified input event (typing, delete, paste, etc.)
+    pageContent.addEventListener('input', () => {
+        updateStatus('Editing...', 'status-saving');
+        debounceOverflowCheck();
+        debounceSave();
+    });
 
-            // ENTER KEY HANDLER
-            pageContent.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    console.log(`🔥 ENTER pressed on page ${pageNumber}!`);
-
-                    // Check after Enter creates content
-                    requestAnimationFrame(() => {
-                        const currentHeight = pageContent.scrollHeight;
-                        console.log(`📏 Page ${pageNumber} height: ${currentHeight}px (max: ${MAX_PAGE_HEIGHT}px)`);
-
-                        if (currentHeight > MAX_PAGE_HEIGHT) {
-                            console.log(`🚨 OVERFLOW on page ${pageNumber}! Moving to next page...`);
-
-                            const nextPageNum = pageNumber + 1;
-                            console.log(`🎯 Target: Page ${nextPageNum}`);
-
-                            // Create next page if needed
-                            if (!document.getElementById(`page-${nextPageNum}`)) {
-                                createNextPage(nextPageNum);
-                            }
-
-                            // Move content and cursor
-                            setTimeout(() => {
-                                moveContentAndCursor(pageNumber, nextPageNum);
-                            }, 50);
-                        }
-                    });
-                }
+    // Also catch delete/backspace keydowns explicitly
+    pageContent.addEventListener('keydown', (e) => {
+        if (
+            e.key === 'Backspace' || 
+            e.key === 'Delete' || 
+            e.key === 'Enter'
+        ) {
+            requestAnimationFrame(() => {
+                debounceOverflowCheck();
             });
         }
+    });
+}
+
+
 
         // MOVE CONTENT AND CURSOR - FIXED GOOGLE DOCS STYLE
+        // function moveContentAndCursor(fromPageNum, toPageNum) {
+        //     const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
+        //     const toPage = document.getElementById(`pageContent-${toPageNum}`);
+
+        //     if (!fromPage || !toPage) {
+        //         console.error(`❌ Pages not found: from=${fromPageNum}, to=${toPageNum}`);
+        //         return;
+        //     }
+
+        //     console.log(`🎯 Moving content and cursor: ${fromPageNum} → ${toPageNum}`);
+
+        //     // Get all elements from the overflowing page
+        //     const allElements = Array.from(fromPage.children);
+        //     if (allElements.length === 0) {
+        //         console.log(`📝 No elements to move, creating new paragraph on page ${toPageNum}`);
+
+        //         // Create new paragraph on target page
+        //         const newPara = document.createElement('p');
+        //         newPara.innerHTML = '<br>';
+        //         toPage.appendChild(newPara);
+
+        //         // Focus and position cursor
+        //         setTimeout(() => {
+        //             toPage.focus();
+
+        //             const range = document.createRange();
+        //             range.setStart(newPara, 0);
+        //             range.collapse(true);
+
+        //             const selection = window.getSelection();
+        //             selection.removeAllRanges();
+        //             selection.addRange(range);
+
+        //             console.log(`✅ Cursor moved to new paragraph on page ${toPageNum}`);
+        //         }, 50);
+        //         return;
+        //     }
+
+        //     // Calculate what should stay vs what should move
+        //     let totalHeight = 0;
+        //     let moveFromIndex = allElements.length; // Default: move nothing
+
+        //     for (let i = 0; i < allElements.length; i++) {
+        //         const elementHeight = allElements[i].offsetHeight + 20;
+
+        //         if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
+        //             // If this is the first element that causes overflow, we need to move at least this element
+        //             moveFromIndex = Math.max(1, i); // Move at least 1 element
+        //             console.log(`📊 Split at element ${moveFromIndex}. Total elements: ${allElements.length}`);
+        //             break;
+        //         }
+        //         totalHeight += elementHeight;
+        //     }
+
+        //     // Move the overflowing elements
+        //     if (moveFromIndex < allElements.length) {
+        //         const elementsToMove = allElements.slice(moveFromIndex);
+        //         console.log(`📋 Moving ${elementsToMove.length} elements from page ${fromPageNum} to page ${toPageNum}`);
+
+        //         // Move each element to the target page
+        //         elementsToMove.forEach((element, index) => {
+        //             console.log(`📄 Moving element ${index + 1}: ${element.tagName}`);
+        //             toPage.appendChild(element);
+        //         });
+
+        //         // Focus the target page and position cursor at the first moved element
+        //         setTimeout(() => {
+        //             console.log(`🎯 Focusing page ${toPageNum}`);
+        //             toPage.focus();
+
+        //             if (elementsToMove.length > 0) {
+        //                 const firstMovedElement = elementsToMove[0];
+
+        //                 try {
+        //                     const range = document.createRange();
+
+        //                     // Position cursor at the beginning of the first moved element
+        //                     if (firstMovedElement.firstChild && firstMovedElement.firstChild.nodeType === Node.TEXT_NODE) {
+        //                         range.setStart(firstMovedElement.firstChild, 0);
+        //                     } else if (firstMovedElement.firstChild) {
+        //                         range.setStart(firstMovedElement.firstChild, 0);
+        //                     } else {
+        //                         range.setStart(firstMovedElement, 0);
+        //                     }
+
+        //                     range.collapse(true);
+
+        //                     const selection = window.getSelection();
+        //                     selection.removeAllRanges();
+        //                     selection.addRange(range);
+
+        //                     console.log(`✅ Cursor positioned at first moved element on page ${toPageNum}`);
+        //                 } catch (error) {
+        //                     console.error('Error positioning cursor:', error);
+
+        //                     // Fallback: position at the beginning of the page
+        //                     if (toPage.firstChild) {
+        //                         const range = document.createRange();
+        //                         range.setStart(toPage.firstChild, 0);
+        //                         range.collapse(true);
+
+        //                         const selection = window.getSelection();
+        //                         selection.removeAllRanges();
+        //                         selection.addRange(range);
+        //                     }
+        //                 }
+        //             }
+        //         }, 100);
+        //     } else {
+        //         // No elements to move, but still focus next page
+        //         console.log(`🎯 No elements to move, just focusing page ${toPageNum}`);
+
+        //         setTimeout(() => {
+        //             toPage.focus();
+
+        //             // If target page is empty, create a paragraph
+        //             if (toPage.children.length === 0) {
+        //                 const newPara = document.createElement('p');
+        //                 newPara.innerHTML = '<br>';
+        //                 toPage.appendChild(newPara);
+        //             }
+
+        //             // Position cursor at beginning of target page
+        //             if (toPage.firstChild) {
+        //                 const range = document.createRange();
+        //                 range.setStart(toPage.firstChild, 0);
+        //                 range.collapse(true);
+
+        //                 const selection = window.getSelection();
+        //                 selection.removeAllRanges();
+        //                 selection.addRange(range);
+        //             }
+
+        //             console.log(`✅ Cursor positioned on page ${toPageNum}`);
+        //         }, 100);
+        //     }
+
+        //     // Check if the target page also overflows after moving content
+        //     setTimeout(() => {
+        //         const targetHeight = toPage.scrollHeight;
+        //         if (targetHeight > MAX_PAGE_HEIGHT) {
+        //             console.log(`🔄 Page ${toPageNum} also overflowed (${targetHeight}px), checking again...`);
+        //             checkForOverflow();
+        //         }
+        //     }, 200);
+        // }
         function moveContentAndCursor(fromPageNum, toPageNum) {
             const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
             const toPage = document.getElementById(`pageContent-${toPageNum}`);
@@ -1183,146 +1341,92 @@ if ($data === null) {
                 return;
             }
 
-            console.log(`🎯 Moving content and cursor: ${fromPageNum} → ${toPageNum}`);
-
-            // Get all elements from the overflowing page
             const allElements = Array.from(fromPage.children);
             if (allElements.length === 0) {
-                console.log(`📝 No elements to move, creating new paragraph on page ${toPageNum}`);
-
-                // Create new paragraph on target page
                 const newPara = document.createElement('p');
                 newPara.innerHTML = '<br>';
                 toPage.appendChild(newPara);
-
-                // Focus and position cursor
-                setTimeout(() => {
-                    toPage.focus();
-
-                    const range = document.createRange();
-                    range.setStart(newPara, 0);
-                    range.collapse(true);
-
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-
-                    console.log(`✅ Cursor moved to new paragraph on page ${toPageNum}`);
-                }, 50);
+                setCursorAtStart(newPara);
                 return;
             }
 
-            // Calculate what should stay vs what should move
+            // Calculate overflow using real bounding boxes
             let totalHeight = 0;
-            let moveFromIndex = allElements.length; // Default: move nothing
+            let moveFromIndex = allElements.length;
 
             for (let i = 0; i < allElements.length; i++) {
-                const elementHeight = allElements[i].offsetHeight + 20;
+                const rect = allElements[i].getBoundingClientRect();
+                const elementHeight = rect.height || allElements[i].offsetHeight || 0;
+                totalHeight += elementHeight + 10; // +10 for padding/margin buffer
 
-                if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
-                    // If this is the first element that causes overflow, we need to move at least this element
-                    moveFromIndex = Math.max(1, i); // Move at least 1 element
-                    console.log(`📊 Split at element ${moveFromIndex}. Total elements: ${allElements.length}`);
+                if (totalHeight > MAX_PAGE_HEIGHT) {
+                    moveFromIndex = Math.max(1, i);
                     break;
                 }
-                totalHeight += elementHeight;
             }
 
-            // Move the overflowing elements
+            // Move if overflowed
             if (moveFromIndex < allElements.length) {
                 const elementsToMove = allElements.slice(moveFromIndex);
-                console.log(`📋 Moving ${elementsToMove.length} elements from page ${fromPageNum} to page ${toPageNum}`);
+                elementsToMove.forEach(el => toPage.appendChild(el));
 
-                // Move each element to the target page
-                elementsToMove.forEach((element, index) => {
-                    console.log(`📄 Moving element ${index + 1}: ${element.tagName}`);
-                    toPage.appendChild(element);
-                });
-
-                // Focus the target page and position cursor at the first moved element
+                // Cursor positioning after DOM update
                 setTimeout(() => {
-                    console.log(`🎯 Focusing page ${toPageNum}`);
-                    toPage.focus();
-
                     if (elementsToMove.length > 0) {
-                        const firstMovedElement = elementsToMove[0];
+                        setCursorAtStart(elementsToMove[0]);
+                    } else {
+                        ensureBlankPara(toPage);
+                        setCursorAtStart(toPage.firstChild);
+                    }
 
-                        try {
-                            const range = document.createRange();
-
-                            // Position cursor at the beginning of the first moved element
-                            if (firstMovedElement.firstChild && firstMovedElement.firstChild.nodeType === Node.TEXT_NODE) {
-                                range.setStart(firstMovedElement.firstChild, 0);
-                            } else if (firstMovedElement.firstChild) {
-                                range.setStart(firstMovedElement.firstChild, 0);
-                            } else {
-                                range.setStart(firstMovedElement, 0);
-                            }
-
-                            range.collapse(true);
-
-                            const selection = window.getSelection();
-                            selection.removeAllRanges();
-                            selection.addRange(range);
-
-                            console.log(`✅ Cursor positioned at first moved element on page ${toPageNum}`);
-                        } catch (error) {
-                            console.error('Error positioning cursor:', error);
-
-                            // Fallback: position at the beginning of the page
-                            if (toPage.firstChild) {
-                                const range = document.createRange();
-                                range.setStart(toPage.firstChild, 0);
-                                range.collapse(true);
-
-                                const selection = window.getSelection();
-                                selection.removeAllRanges();
-                                selection.addRange(range);
-                            }
+                    // Recursively check if destination page now also overflows
+                    setTimeout(() => {
+                        if (toPage.scrollHeight > MAX_PAGE_HEIGHT) {
+                            console.log(`🔁 Page ${toPageNum} overflowed again, checking...`);
+                            checkForOverflow();
                         }
-                    }
-                }, 100);
+                    }, 50);
+                }, 50);
             } else {
-                // No elements to move, but still focus next page
-                console.log(`🎯 No elements to move, just focusing page ${toPageNum}`);
-
-                setTimeout(() => {
-                    toPage.focus();
-
-                    // If target page is empty, create a paragraph
-                    if (toPage.children.length === 0) {
-                        const newPara = document.createElement('p');
-                        newPara.innerHTML = '<br>';
-                        toPage.appendChild(newPara);
-                    }
-
-                    // Position cursor at beginning of target page
-                    if (toPage.firstChild) {
-                        const range = document.createRange();
-                        range.setStart(toPage.firstChild, 0);
-                        range.collapse(true);
-
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    }
-
-                    console.log(`✅ Cursor positioned on page ${toPageNum}`);
-                }, 100);
+                // Nothing to move but make sure target page has a paragraph and cursor
+                ensureBlankPara(toPage);
+                setCursorAtStart(toPage.firstChild);
             }
+        }
 
-            // Check if the target page also overflows after moving content
-            setTimeout(() => {
-                const targetHeight = toPage.scrollHeight;
-                if (targetHeight > MAX_PAGE_HEIGHT) {
-                    console.log(`🔄 Page ${toPageNum} also overflowed (${targetHeight}px), checking again...`);
-                    checkForOverflow();
+        // ✅ Set cursor to beginning of element
+        function setCursorAtStart(el) {
+            try {
+                const range = document.createRange();
+                const selection = window.getSelection();
+
+                if (el.firstChild?.nodeType === Node.TEXT_NODE) {
+                    range.setStart(el.firstChild, 0);
+                } else {
+                    range.setStart(el, 0);
                 }
-            }, 200);
+
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                console.log(`✅ Cursor set`);
+            } catch (e) {
+                console.error('❌ Failed to set cursor:', e);
+            }
+        }
+
+        // ✅ Ensure at least one blank paragraph exists
+        function ensureBlankPara(page) {
+            if (!page || page.children.length > 0) return;
+
+            const newPara = document.createElement('p');
+            newPara.innerHTML = '<br>';
+            page.appendChild(newPara);
         }
 
         function getAllContent() {
-            let allContent = '';
+            let blocks = [];
             let title = '';
 
             const titleInput = document.getElementById('questionTitle');
@@ -1333,15 +1437,18 @@ if ($data === null) {
             for (let i = 1; i <= currentPageCount; i++) {
                 const pageContent = document.getElementById(`pageContent-${i}`);
                 if (pageContent) {
-                    allContent += pageContent.innerHTML;
+                    Array.from(pageContent.children).forEach(child => {
+                        blocks.push(child.outerHTML);
+                    });
                 }
             }
 
             return {
                 title,
-                content: allContent
+                blocks
             };
         }
+
 
         // Auto-save
         function saveCurrentContent() {
@@ -1450,259 +1557,44 @@ if ($data === null) {
         }
 
         // Export to PDF (Basic version)
-        // function exportToPDF() {
-        //     updateStatus('Generating PDF...', 'status-saving');
-
-        //     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        //         alert('PDF library not loaded. Please refresh the page and try again.');
-        //         updateStatus('PDF export failed', 'status-error');
-        //         return;
-        //     }
-
-        //     try {
-        //         let jsPDF;
-        //         if (window.jspdf && window.jspdf.jsPDF) {
-        //             jsPDF = window.jspdf.jsPDF;
-        //         } else if (window.jsPDF) {
-        //             jsPDF = window.jsPDF;
-        //         } else {
-        //             throw new Error('jsPDF not found');
-        //         }
-
-        //         const pdf = new jsPDF('p', 'mm', 'a4');
-
-        //         pdf.setFontSize(16);
-        //         pdf.text('Book Export', 20, 20);
-
-        //         pdf.setFontSize(12);
-        //         pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
-
-        //         const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        //         pdf.save(fileName);
-
-        //         updateStatus('PDF exported successfully', 'status-saved');
-
-        //     } catch (error) {
-        //         console.error('PDF Export Error:', error);
-        //         alert('Error generating PDF: ' + error.message);
-        //         updateStatus('PDF export failed', 'status-error');
-        //     }
-        // }
-
-        // function exportToPDF() {
-        //     updateStatus('Generating PDF...', 'status-saving');
-
-        //     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        //         alert('PDF library not loaded. Please refresh the page and try again.');
-        //         updateStatus('PDF export failed', 'status-error');
-        //         return;
-        //     }
-
-        //     try {
-        //         let jsPDF;
-        //         if (window.jspdf && window.jspdf.jsPDF) {
-        //             jsPDF = window.jspdf.jsPDF;
-        //         } else if (window.jsPDF) {
-        //             jsPDF = window.jsPDF;
-        //         } else {
-        //             throw new Error('jsPDF not found');
-        //         }
-
-        //         const pdf = new jsPDF('p', 'mm', 'a4');
-        //         const pages = document.querySelectorAll('.document-page');
-        //         let y = 20;
-
-        //         // Title
-        //         pdf.setFontSize(16);
-        //         pdf.text('Book Export', 20, y);
-        //         y += 10;
-
-        //         // Date
-        //         pdf.setFontSize(12);
-        //         pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
-        //         y += 15;
-
-        //         pages.forEach((page, idx) => {
-        //             if (idx > 0) {
-        //                 pdf.addPage();
-        //                 y = 20;
-        //             }
-        //             // Page header (question title)
-        //             const titleInput = page.querySelector('.question-title-input');
-        //             if (titleInput && titleInput.value) {
-        //                 pdf.setFontSize(14);
-        //                 pdf.text(titleInput.value, 20, y);
-        //                 y += 10;
-        //             }
-
-        //             // Page content
-        //             const contentDiv = page.querySelector('.page-content');
-        //             if (contentDiv) {
-        //                 pdf.setFontSize(12);
-        //                 // Convert HTML to plain text, preserving line breaks
-        //                 let text = contentDiv.innerText || contentDiv.textContent || '';
-        //                 let lines = pdf.splitTextToSize(text, 170); // 170mm width
-        //                 pdf.text(lines, 20, y);
-        //             }
-        //         });
-
-        //         const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        //         pdf.save(fileName);
-
-        //         updateStatus('PDF exported successfully', 'status-saved');
-
-        //     } catch (error) {
-        //         console.error('PDF Export Error:', error);
-        //         alert('Error generating PDF: ' + error.message);
-        //         updateStatus('PDF export failed', 'status-error');
-        //     }
-        // }
-
-        // function exportToPDF() {
-        //     updateStatus('Generating PDF...', 'status-saving');
-
-        //     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        //         alert('PDF library not loaded. Please refresh the page and try again.');
-        //         updateStatus('PDF export failed', 'status-error');
-        //         return;
-        //     }
-
-        //     try {
-        //         let jsPDF;
-        //         if (window.jspdf && window.jspdf.jsPDF) {
-        //             jsPDF = window.jspdf.jsPDF;
-        //         } else if (window.jsPDF) {
-        //             jsPDF = window.jsPDF;
-        //         } else {
-        //             throw new Error('jsPDF not found');
-        //         }
-
-        //         const pdf = new jsPDF('p', 'mm', 'a4');
-        //         const pages = document.querySelectorAll('.document-page');
-        //         let y = 20;
-
-        //         // Title
-        //         pdf.setFontSize(16);
-        //         pdf.text('Book Export', 20, y);
-        //         y += 10;
-
-        //         // Date
-        //         pdf.setFontSize(12);
-        //         pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
-        //         y += 15;
-
-        //         pages.forEach((page, idx) => {
-        //             if (idx > 0) {
-        //                 pdf.addPage();
-        //                 y = 20;
-        //             }
-        //             // Page header (question title)
-        //             const titleInput = page.querySelector('.question-title-input');
-        //             if (titleInput && titleInput.value) {
-        //                 pdf.setFontSize(14);
-        //                 // Wrap the title text
-        //                 const wrappedTitle = pdf.splitTextToSize(titleInput.value, 170);
-        //                 pdf.text(wrappedTitle, 20, y);
-        //                 y += wrappedTitle.length * 8; // 8mm per line approx
-        //             }
-
-        //             // Page content
-        //             const contentDiv = page.querySelector('.page-content');
-        //             if (contentDiv) {
-        //                 pdf.setFontSize(12);
-        //                 let text = contentDiv.innerText || contentDiv.textContent || '';
-        //                 let lines = pdf.splitTextToSize(text, 170);
-        //                 pdf.text(lines, 20, y);
-        //             }
-        //         });
-
-        //         const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        //         pdf.save(fileName);
-
-        //         updateStatus('PDF exported successfully', 'status-saved');
-
-        //     } catch (error) {
-        //         console.error('PDF Export Error:', error);
-        //         alert('Error generating PDF: ' + error.message);
-        //         updateStatus('PDF export failed', 'status-error');
-        //     }
-        // }
-
-
         function exportToPDF() {
-    updateStatus('Generating PDF...', 'status-saving');
+            updateStatus('Generating PDF...', 'status-saving');
 
-    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        alert('PDF library not loaded. Please refresh the page and try again.');
-        updateStatus('PDF export failed', 'status-error');
-        return;
-    }
-
-    try {
-        let jsPDF;
-        if (window.jspdf && window.jspdf.jsPDF) {
-            jsPDF = window.jspdf.jsPDF;
-        } else if (window.jsPDF) {
-            jsPDF = window.jsPDF;
-        } else {
-            throw new Error('jsPDF not found');
-        }
-
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pages = document.querySelectorAll('.document-page');
-        let y = 20;
-
-        // Set default font for the whole document
-        pdf.setFont('Times', 'normal'); // Or 'helvetica', 'normal'
-
-        // Title
-        pdf.setFontSize(16);
-        pdf.text('Book Export', 20, y);
-        y += 10;
-
-        // Date
-        pdf.setFontSize(12);
-        pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
-        y += 15;
-
-        pages.forEach((page, idx) => {
-            if (idx > 0) {
-                pdf.addPage();
-                pdf.setFont('Times', 'normal'); // Ensure font stays same on new page
-                y = 20;
-            }
-            // Page header (question title)
-            const titleInput = page.querySelector('.question-title-input');
-            if (titleInput && titleInput.value) {
-                pdf.setFont('Times', 'bold');
-                pdf.setFontSize(14);
-                const wrappedTitle = pdf.splitTextToSize(titleInput.value, 170);
-                pdf.text(wrappedTitle, 20, y);
-                y += wrappedTitle.length * 8;
+            if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+                alert('PDF library not loaded. Please refresh the page and try again.');
+                updateStatus('PDF export failed', 'status-error');
+                return;
             }
 
-            // Page content
-            const contentDiv = page.querySelector('.page-content');
-            if (contentDiv) {
-                pdf.setFont('Times', 'normal');
+            try {
+                let jsPDF;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    jsPDF = window.jspdf.jsPDF;
+                } else if (window.jsPDF) {
+                    jsPDF = window.jsPDF;
+                } else {
+                    throw new Error('jsPDF not found');
+                }
+
+                const pdf = new jsPDF('p', 'mm', 'a4');
+
+                pdf.setFontSize(16);
+                pdf.text('Book Export', 20, 20);
+
                 pdf.setFontSize(12);
-                let text = contentDiv.innerText || contentDiv.textContent || '';
-                let lines = pdf.splitTextToSize(text, 170);
-                pdf.text(lines, 20, y);
+                pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
+
+                const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
+                pdf.save(fileName);
+
+                updateStatus('PDF exported successfully', 'status-saved');
+
+            } catch (error) {
+                console.error('PDF Export Error:', error);
+                alert('Error generating PDF: ' + error.message);
+                updateStatus('PDF export failed', 'status-error');
             }
-        });
-
-        const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        pdf.save(fileName);
-
-        updateStatus('PDF exported successfully', 'status-saved');
-
-    } catch (error) {
-        console.error('PDF Export Error:', error);
-        alert('Error generating PDF: ' + error.message);
-        updateStatus('PDF export failed', 'status-error');
-    }
-}
+        }
 
         // Setup Event Listeners
         function setupEventListeners() {
@@ -1816,6 +1708,16 @@ if ($data === null) {
             window.print();
         }
 
+        function updateToolbarState() {
+            const commands = ['bold', 'italic', 'underline'];
+            commands.forEach(command => {
+                const button = document.getElementById(command + 'Btn');
+                if (button) {
+                    button.classList.toggle('active', document.queryCommandState(command));
+                }
+            });
+        }
+
         function filterQuestions(searchTerm) {
             const container = document.getElementById('questionsContainer');
             const items = container.querySelectorAll('.question-item');
@@ -1837,124 +1739,6 @@ if ($data === null) {
             statusText.textContent = message;
             statusIndicator.className = 'status-indicator ' + className;
         }
-
-        function handleKeydown(event) {
-            if (event.key === 'Backspace') {
-                const selection = window.getSelection();
-                if (!selection.rangeCount) return;
-                const range = selection.getRangeAt(0);
-                const currentPage = getCurrentPage(range.startContainer);
-                const previousPage = getPreviousPage(currentPage);
-
-                if (previousPage && isAtPageStart(currentPage.querySelector('.page-content'), range)) {
-                    event.preventDefault();
-                    const prevContent = previousPage.querySelector('.page-content');
-                    if (prevContent) {
-                        prevContent.focus();
-                        // Move cursor to end
-                        const range = document.createRange();
-                        range.selectNodeContents(prevContent);
-                        range.collapse(false);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            } else if (event.key === 'Delete') {
-                const selection = window.getSelection();
-                if (!selection.rangeCount) return;
-                const range = selection.getRangeAt(0);
-                const currentPage = getCurrentPage(range.startContainer);
-                const nextPage = getNextPage(currentPage);
-
-                if (nextPage && isAtPageEnd(currentPage.querySelector('.page-content'), range)) {
-                    event.preventDefault();
-                    const nextContent = nextPage.querySelector('.page-content');
-                    if (nextContent) {
-                        nextContent.focus();
-                        // Move cursor to start
-                        const range = document.createRange();
-                        range.selectNodeContents(nextContent);
-                        range.collapse(true);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            }
-        }
-
-        function isAtPageStart(pageContent, range) {
-            const startContainer = range.startContainer;
-            const startOffset = range.startOffset;
-
-            if (startOffset !== 0) return false;
-
-            const walker = document.createTreeWalker(
-                pageContent,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-
-            const firstTextNode = walker.nextNode();
-
-            if (!firstTextNode) {
-                return true;
-            }
-
-            return startContainer === firstTextNode ||
-                (startContainer.nodeType === Node.ELEMENT_NODE &&
-                    startContainer === pageContent.firstElementChild);
-        }
-
-        function isAtPageEnd(pageContent, range) {
-            const endContainer = range.endContainer;
-            const endOffset = range.endOffset;
-
-            if (endOffset !== endContainer.length) return false;
-
-            const walker = document.createTreeWalker(
-                pageContent,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-
-            const lastTextNode = walker.nextNode();
-
-            if (!lastTextNode) {
-                return true;
-            }
-
-            return endContainer === lastTextNode ||
-                (endContainer.nodeType === Node.ELEMENT_NODE &&
-                    endContainer === pageContent.lastElementChild);
-        }
-
-        function getCurrentPage(container) {
-            // Traverse up to find the parent .document-page
-            while (container && !container.classList?.contains('document-page')) {
-                container = container.parentNode;
-            }
-            return container;
-        }
-
-        function getPreviousPage(currentPage) {
-            if (!currentPage) return null;
-            return currentPage.previousElementSibling && currentPage.previousElementSibling.classList.contains('document-page') ?
-                currentPage.previousElementSibling :
-                null;
-        }
-
-        function getNextPage(currentPage) {
-            if (!currentPage) return null;
-            return currentPage.nextElementSibling && currentPage.nextElementSibling.classList.contains('document-page') ?
-                currentPage.nextElementSibling :
-                null;
-        }
-
-        document.addEventListener('keydown', handleKeydown);
     </script>
 </body>
 

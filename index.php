@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-
 <?php
 $jsonFile = 'data.json';
 
@@ -107,7 +105,6 @@ if ($data === null) {
                                     'time' => time() * 1000,
                                     'blocks' => [
                                         [
-                                            'id' => 'block1',
                                             'type' => 'paragraph',
                                             'data' => [
                                                 'text' => 'Sample content here...'
@@ -128,6 +125,7 @@ if ($data === null) {
 }
 ?>
 
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -786,9 +784,14 @@ if ($data === null) {
     <div class="main-layout">
         <!-- Sidebar -->
         <div class="sidebar">
+            <!-- <div class="sidebar-header">
+                <div class="sidebar-title">Document Outline</div>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search questions...">
+            </div> -->
             <div class="sidebar-header">
                 <div class="sidebar-title">Document Outline</div>
                 <input type="text" class="search-input" id="searchInput" placeholder="Search questions...">
+                <button class="share-btn" id="addQuestionBtn" style="margin-top:10px;width:100%;">Add New Question</button>
             </div>
             <div class="questions-container" id="questionsContainer">
                 <div class="loading">
@@ -816,6 +819,138 @@ if ($data === null) {
     </div>
 
     <script>
+        // function addNewQuestion() {
+        //     let chapterIdx = currentChapter >= 0 ? currentChapter : 0;
+        //     if (!data.chapters || !data.chapters[chapterIdx]) return;
+
+        //     const questions = data.chapters[chapterIdx].questions;
+        //     const newId = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) + 1 : 1;
+
+        //     const newQuestion = {
+        //         id: newId,
+        //         title: 'Untitled Question',
+        //         answers: [{
+        //             id: 1,
+        //             user_id: 1,
+        //             author_first_name: "User",
+        //             author_last_name: "",
+        //             answer: JSON.stringify({
+        //                 time: Date.now(),
+        //                 blocks: [{
+        //                     type: "paragraph",
+        //                     data: {
+        //                         text: ""
+        //                     }
+        //                 }]
+        //             })
+        //         }]
+        //     };
+
+        //     questions.push(newQuestion);
+
+        //     saveToServer();
+        //     loadSidebar();
+
+        //     setTimeout(() => {
+        //         loadQuestion(chapterIdx, questions.length - 1);
+        //         const items = document.querySelectorAll('.question-item');
+        //         if (items.length) {
+        //             items[items.length - 1].classList.add('active');
+        //         }
+        //     }, 200);
+        // }
+        function addNewQuestion() {
+            let chapterIdx = currentChapter >= 0 ? currentChapter : 0;
+            if (!data.chapters || !data.chapters[chapterIdx]) return;
+
+            const questions = data.chapters[chapterIdx].questions;
+            const newId = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) + 1 : 1;
+
+            const newQuestion = {
+                id: newId,
+                title: 'Untitled Question',
+                answers: [{
+                    id: 1,
+                    user_id: 1,
+                    author_first_name: "User",
+                    author_last_name: "",
+                    answer: JSON.stringify({
+                        time: Date.now(),
+                        blocks: [{
+                            type: "paragraph",
+                            data: {
+                                text: ""
+                            }
+                        }]
+                    })
+                }]
+            };
+
+            questions.push(newQuestion);
+
+            // Immediately load the new question for editing
+            loadSidebar();
+            setTimeout(() => {
+                loadQuestion(chapterIdx, questions.length - 1);
+                // Highlight the new question
+                const items = document.querySelectorAll('.question-item');
+                if (items.length) {
+                    items[items.length - 1].classList.add('active');
+                }
+            }, 100);
+        }
+
+        function deleteQuestion(chapterIndex, questionIndex) {
+            if (!confirm('Are you sure you want to delete this question?')) return;
+
+            if (
+                data.chapters &&
+                data.chapters[chapterIndex] &&
+                data.chapters[chapterIndex].questions &&
+                data.chapters[chapterIndex].questions[questionIndex]
+            ) {
+                data.chapters[chapterIndex].questions.splice(questionIndex, 1);
+
+                // If the deleted question was selected, reset editor
+                if (currentChapter === chapterIndex && currentQuestion === questionIndex) {
+                    currentChapter = -1;
+                    currentQuestion = -1;
+                    document.getElementById('documentWrapper').innerHTML = `
+                        <div class="document-page" id="page-1">
+                            <div class="page-header">
+                                <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title...">
+                            </div>
+                            <div class="page-content" id="pageContent-1" contenteditable="true">
+                                <p>Select a question from the sidebar to start editing...</p>
+                            </div>
+                            <div class="page-number">Page 1</div>
+                        </div>
+                    `;
+                }
+
+                saveToServer();
+                loadSidebar();
+
+                // Optionally, auto-select the next available question
+                setTimeout(() => {
+                    const chapter = data.chapters[chapterIndex];
+                    if (chapter && chapter.questions.length > 0) {
+                        loadQuestion(chapterIndex, 0);
+                        // Highlight the first question
+                        const items = document.querySelectorAll('.question-item');
+                        if (items.length) items[0].classList.add('active');
+                    }
+                }, 200);
+            }
+        }
+
+        // Add event listener for the button after DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const addBtn = document.getElementById('addQuestionBtn');
+            if (addBtn) {
+                addBtn.addEventListener('click', addNewQuestion);
+            }
+        });
         // Global Variables
         let data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         let currentChapter = -1;
@@ -873,9 +1008,19 @@ if ($data === null) {
                     chapter.questions.forEach((question, questionIndex) => {
                         const questionItem = document.createElement('div');
                         questionItem.className = 'question-item';
+                        // questionItem.innerHTML = `
+                        //     <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
+                        //     <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
+                        // `;
+
                         questionItem.innerHTML = `
-                            <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
-                            <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
+                                    <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
+                                </div>
+                                <button class="toolbar-btn" title="Delete Question" style="color:#d93025;font-size:18px;margin-left:8px;" onclick="event.stopPropagation(); deleteQuestion(${chapterIndex},${questionIndex});">✖</button>
+                            </div>
                         `;
 
                         questionItem.onclick = () => {
@@ -898,6 +1043,67 @@ if ($data === null) {
         }
 
         // Load Question Content
+        // function loadQuestion(chapterIndex, questionIndex) {
+        //     if (isLoading) return;
+
+        //     // Save current content before switching
+        //     if (currentChapter >= 0 && currentQuestion >= 0) {
+        //         saveCurrentContent();
+        //     }
+
+        //     isLoading = true;
+        //     updateStatus('Loading...', 'status-saving');
+
+        //     currentChapter = chapterIndex;
+        //     currentQuestion = questionIndex;
+
+        //     const question = data.chapters[chapterIndex].questions[questionIndex];
+
+        //     // Load question content
+        //     let content = '';
+        //     if (question.answers && question.answers[0] && question.answers[0].answer) {
+        //         try {
+        //             const answerData = JSON.parse(question.answers[0].answer);
+        //             if (answerData.blocks && Array.isArray(answerData.blocks)) {
+        //                 content = convertBlocksToHTML(answerData.blocks);
+        //             } else {
+        //                 content = '<p>Start writing your answer here...</p>';
+        //             }
+        //         } catch (error) {
+        //             console.error('Error parsing answer:', error);
+        //             content = '<p>Error loading content. Start writing here...</p>';
+        //         }
+        //     } else {
+        //         content = '<p>Start writing your answer here...</p>';
+        //     }
+
+        //     // Reset to single page and load content
+        //     const wrapper = document.getElementById('documentWrapper');
+        //     wrapper.innerHTML = `
+        //         <div class="document-page" id="page-1">
+        //             <div class="page-header">
+        //                 <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title..." value="${question.title || ''}">
+        //             </div>
+        //             <div class="page-content" id="pageContent-1" contenteditable="true">
+        //                 ${content}
+        //             </div>
+        //             <div class="page-number">Page 1</div>
+        //         </div>
+        //     `;
+
+        //     currentPageCount = 1;
+
+        //     // Setup event listeners
+        //     setupPageEventListeners(1);
+
+        //     // Check for page overflow
+        //     setTimeout(() => {
+        //         checkForOverflow();
+        //     }, 100);
+
+        //     isLoading = false;
+        //     updateStatus('Loaded successfully', 'status-saved');
+        // }
         function loadQuestion(chapterIndex, questionIndex) {
             if (isLoading) return;
 
@@ -948,8 +1154,9 @@ if ($data === null) {
 
             currentPageCount = 1;
 
-            // Setup event listeners
+            // Setup event listeners for the new question!
             setupPageEventListeners(1);
+            setupEventListeners(); // <-- ADD THIS LINE
 
             // Check for page overflow
             setTimeout(() => {
@@ -959,7 +1166,6 @@ if ($data === null) {
             isLoading = false;
             updateStatus('Loaded successfully', 'status-saved');
         }
-
         // Convert Blocks to HTML
         function convertBlocksToHTML(blocks) {
             if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
@@ -971,22 +1177,21 @@ if ($data === null) {
 
                 switch (block.type) {
                     case 'paragraph':
-                        return `<p>${block.data?.text || ''}</p>`;
-
+                        return `<p>${block.data && block.data.text ? block.data.text : ''}</p>`;
                     case 'header':
-                        const level = block.data?.level || 1;
-                        return `<h${level}>${block.data?.text || ''}</h${level}>`;
-
+                        const level = block.data && block.data.level ? block.data.level : 1;
+                        return `<h${level}>${block.data && block.data.text ? block.data.text : ''}</h${level}>`;
                     case 'list':
-                        if (!block.data?.items) return '<ul><li>Empty list</li></ul>';
+                        if (!block.data || !block.data.items) return '<ul><li>Empty list</li></ul>';
                         const listType = block.data.style === 'ordered' ? 'ol' : 'ul';
                         const items = block.data.items.map(item => `<li>${item}</li>`).join('');
                         return `<${listType}>${items}</${listType}>`;
-
+                    case 'image':
+                        return `<img src="${block.data && block.data.url ? block.data.url : ''}" alt="">`;
                     default:
-                        return `<p>${block.data?.text || `[${block.type}]`}</p>`;
+                        return `<p>${block.data && block.data.text ? block.data.text : `[${block.type}]`}</p>`;
                 }
-            }).filter(html => html).join('') || '<p>Start writing your answer here...</p>';
+            }).join('') || '<p>Start writing your answer here...</p>';
         }
 
         // Convert HTML to Blocks
@@ -995,39 +1200,45 @@ if ($data === null) {
             tempDiv.innerHTML = html;
 
             const blocks = [];
-            let blockId = 1;
 
             Array.from(tempDiv.children).forEach(element => {
                 const tagName = element.tagName.toLowerCase();
 
                 if (tagName.match(/^h[1-6]$/)) {
                     blocks.push({
-                        id: `block_${blockId++}`,
                         type: 'header',
                         data: {
-                            text: element.textContent,
+                            text: element.innerHTML, // preserves formatting!
                             level: parseInt(tagName.substring(1))
                         }
                     });
                 } else if (tagName === 'p') {
                     blocks.push({
-                        id: `block_${blockId++}`,
                         type: 'paragraph',
                         data: {
-                            text: element.innerHTML
+                            text: element.innerHTML // preserves formatting!
                         }
                     });
                 } else if (tagName === 'ul' || tagName === 'ol') {
-                    const items = Array.from(element.children).map(li => li.textContent);
+                    const items = Array.from(element.children)
+                        .filter(li => li.tagName.toLowerCase() === 'li')
+                        .map(li => li.innerHTML);
                     blocks.push({
-                        id: `block_${blockId++}`,
                         type: 'list',
                         data: {
                             style: tagName === 'ol' ? 'ordered' : 'unordered',
                             items: items
                         }
                     });
+                } else if (tagName === 'img') {
+                    blocks.push({
+                        type: 'image',
+                        data: {
+                            url: element.getAttribute('src')
+                        }
+                    });
                 }
+
             });
 
             return blocks;
@@ -1450,259 +1661,80 @@ if ($data === null) {
         }
 
         // Export to PDF (Basic version)
-        // function exportToPDF() {
-        //     updateStatus('Generating PDF...', 'status-saving');
-
-        //     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        //         alert('PDF library not loaded. Please refresh the page and try again.');
-        //         updateStatus('PDF export failed', 'status-error');
-        //         return;
-        //     }
-
-        //     try {
-        //         let jsPDF;
-        //         if (window.jspdf && window.jspdf.jsPDF) {
-        //             jsPDF = window.jspdf.jsPDF;
-        //         } else if (window.jsPDF) {
-        //             jsPDF = window.jsPDF;
-        //         } else {
-        //             throw new Error('jsPDF not found');
-        //         }
-
-        //         const pdf = new jsPDF('p', 'mm', 'a4');
-
-        //         pdf.setFontSize(16);
-        //         pdf.text('Book Export', 20, 20);
-
-        //         pdf.setFontSize(12);
-        //         pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
-
-        //         const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        //         pdf.save(fileName);
-
-        //         updateStatus('PDF exported successfully', 'status-saved');
-
-        //     } catch (error) {
-        //         console.error('PDF Export Error:', error);
-        //         alert('Error generating PDF: ' + error.message);
-        //         updateStatus('PDF export failed', 'status-error');
-        //     }
-        // }
-
-        // function exportToPDF() {
-        //     updateStatus('Generating PDF...', 'status-saving');
-
-        //     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        //         alert('PDF library not loaded. Please refresh the page and try again.');
-        //         updateStatus('PDF export failed', 'status-error');
-        //         return;
-        //     }
-
-        //     try {
-        //         let jsPDF;
-        //         if (window.jspdf && window.jspdf.jsPDF) {
-        //             jsPDF = window.jspdf.jsPDF;
-        //         } else if (window.jsPDF) {
-        //             jsPDF = window.jsPDF;
-        //         } else {
-        //             throw new Error('jsPDF not found');
-        //         }
-
-        //         const pdf = new jsPDF('p', 'mm', 'a4');
-        //         const pages = document.querySelectorAll('.document-page');
-        //         let y = 20;
-
-        //         // Title
-        //         pdf.setFontSize(16);
-        //         pdf.text('Book Export', 20, y);
-        //         y += 10;
-
-        //         // Date
-        //         pdf.setFontSize(12);
-        //         pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
-        //         y += 15;
-
-        //         pages.forEach((page, idx) => {
-        //             if (idx > 0) {
-        //                 pdf.addPage();
-        //                 y = 20;
-        //             }
-        //             // Page header (question title)
-        //             const titleInput = page.querySelector('.question-title-input');
-        //             if (titleInput && titleInput.value) {
-        //                 pdf.setFontSize(14);
-        //                 pdf.text(titleInput.value, 20, y);
-        //                 y += 10;
-        //             }
-
-        //             // Page content
-        //             const contentDiv = page.querySelector('.page-content');
-        //             if (contentDiv) {
-        //                 pdf.setFontSize(12);
-        //                 // Convert HTML to plain text, preserving line breaks
-        //                 let text = contentDiv.innerText || contentDiv.textContent || '';
-        //                 let lines = pdf.splitTextToSize(text, 170); // 170mm width
-        //                 pdf.text(lines, 20, y);
-        //             }
-        //         });
-
-        //         const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        //         pdf.save(fileName);
-
-        //         updateStatus('PDF exported successfully', 'status-saved');
-
-        //     } catch (error) {
-        //         console.error('PDF Export Error:', error);
-        //         alert('Error generating PDF: ' + error.message);
-        //         updateStatus('PDF export failed', 'status-error');
-        //     }
-        // }
-
-        // function exportToPDF() {
-        //     updateStatus('Generating PDF...', 'status-saving');
-
-        //     if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        //         alert('PDF library not loaded. Please refresh the page and try again.');
-        //         updateStatus('PDF export failed', 'status-error');
-        //         return;
-        //     }
-
-        //     try {
-        //         let jsPDF;
-        //         if (window.jspdf && window.jspdf.jsPDF) {
-        //             jsPDF = window.jspdf.jsPDF;
-        //         } else if (window.jsPDF) {
-        //             jsPDF = window.jsPDF;
-        //         } else {
-        //             throw new Error('jsPDF not found');
-        //         }
-
-        //         const pdf = new jsPDF('p', 'mm', 'a4');
-        //         const pages = document.querySelectorAll('.document-page');
-        //         let y = 20;
-
-        //         // Title
-        //         pdf.setFontSize(16);
-        //         pdf.text('Book Export', 20, y);
-        //         y += 10;
-
-        //         // Date
-        //         pdf.setFontSize(12);
-        //         pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
-        //         y += 15;
-
-        //         pages.forEach((page, idx) => {
-        //             if (idx > 0) {
-        //                 pdf.addPage();
-        //                 y = 20;
-        //             }
-        //             // Page header (question title)
-        //             const titleInput = page.querySelector('.question-title-input');
-        //             if (titleInput && titleInput.value) {
-        //                 pdf.setFontSize(14);
-        //                 // Wrap the title text
-        //                 const wrappedTitle = pdf.splitTextToSize(titleInput.value, 170);
-        //                 pdf.text(wrappedTitle, 20, y);
-        //                 y += wrappedTitle.length * 8; // 8mm per line approx
-        //             }
-
-        //             // Page content
-        //             const contentDiv = page.querySelector('.page-content');
-        //             if (contentDiv) {
-        //                 pdf.setFontSize(12);
-        //                 let text = contentDiv.innerText || contentDiv.textContent || '';
-        //                 let lines = pdf.splitTextToSize(text, 170);
-        //                 pdf.text(lines, 20, y);
-        //             }
-        //         });
-
-        //         const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        //         pdf.save(fileName);
-
-        //         updateStatus('PDF exported successfully', 'status-saved');
-
-        //     } catch (error) {
-        //         console.error('PDF Export Error:', error);
-        //         alert('Error generating PDF: ' + error.message);
-        //         updateStatus('PDF export failed', 'status-error');
-        //     }
-        // }
-
-
         function exportToPDF() {
-    updateStatus('Generating PDF...', 'status-saving');
+            updateStatus('Generating PDF...', 'status-saving');
 
-    if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-        alert('PDF library not loaded. Please refresh the page and try again.');
-        updateStatus('PDF export failed', 'status-error');
-        return;
-    }
-
-    try {
-        let jsPDF;
-        if (window.jspdf && window.jspdf.jsPDF) {
-            jsPDF = window.jspdf.jsPDF;
-        } else if (window.jsPDF) {
-            jsPDF = window.jsPDF;
-        } else {
-            throw new Error('jsPDF not found');
-        }
-
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pages = document.querySelectorAll('.document-page');
-        let y = 20;
-
-        // Set default font for the whole document
-        pdf.setFont('Times', 'normal'); // Or 'helvetica', 'normal'
-
-        // Title
-        pdf.setFontSize(16);
-        pdf.text('Book Export', 20, y);
-        y += 10;
-
-        // Date
-        pdf.setFontSize(12);
-        pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
-        y += 15;
-
-        pages.forEach((page, idx) => {
-            if (idx > 0) {
-                pdf.addPage();
-                pdf.setFont('Times', 'normal'); // Ensure font stays same on new page
-                y = 20;
-            }
-            // Page header (question title)
-            const titleInput = page.querySelector('.question-title-input');
-            if (titleInput && titleInput.value) {
-                pdf.setFont('Times', 'bold');
-                pdf.setFontSize(14);
-                const wrappedTitle = pdf.splitTextToSize(titleInput.value, 170);
-                pdf.text(wrappedTitle, 20, y);
-                y += wrappedTitle.length * 8;
+            if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+                alert('PDF library not loaded. Please refresh the page and try again.');
+                updateStatus('PDF export failed', 'status-error');
+                return;
             }
 
-            // Page content
-            const contentDiv = page.querySelector('.page-content');
-            if (contentDiv) {
-                pdf.setFont('Times', 'normal');
+            try {
+                let jsPDF;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    jsPDF = window.jspdf.jsPDF;
+                } else if (window.jsPDF) {
+                    jsPDF = window.jsPDF;
+                } else {
+                    throw new Error('jsPDF not found');
+                }
+
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pages = document.querySelectorAll('.document-page');
+                let y = 20;
+
+                // Set default font for the whole document
+                pdf.setFont('Times', 'normal'); // Or 'helvetica', 'normal'
+
+                // Title
+                pdf.setFontSize(16);
+                pdf.text('Book Export', 20, y);
+                y += 10;
+
+                // Date
                 pdf.setFontSize(12);
-                let text = contentDiv.innerText || contentDiv.textContent || '';
-                let lines = pdf.splitTextToSize(text, 170);
-                pdf.text(lines, 20, y);
+                pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
+                y += 15;
+
+                pages.forEach((page, idx) => {
+                    if (idx > 0) {
+                        pdf.addPage();
+                        pdf.setFont('Times', 'normal'); // Ensure font stays same on new page
+                        y = 20;
+                    }
+                    // Page header (question title)
+                    const titleInput = page.querySelector('.question-title-input');
+                    if (titleInput && titleInput.value) {
+                        pdf.setFont('Times', 'bold');
+                        pdf.setFontSize(14);
+                        const wrappedTitle = pdf.splitTextToSize(titleInput.value, 170);
+                        pdf.text(wrappedTitle, 20, y);
+                        y += wrappedTitle.length * 8;
+                    }
+
+                    // Page content
+                    const contentDiv = page.querySelector('.page-content');
+                    if (contentDiv) {
+                        pdf.setFont('Times', 'normal');
+                        pdf.setFontSize(12);
+                        let text = contentDiv.innerText || contentDiv.textContent || '';
+                        let lines = pdf.splitTextToSize(text, 170);
+                        pdf.text(lines, 20, y);
+                    }
+                });
+
+                const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
+                pdf.save(fileName);
+
+                updateStatus('PDF exported successfully', 'status-saved');
+
+            } catch (error) {
+                console.error('PDF Export Error:', error);
+                alert('Error generating PDF: ' + error.message);
+                updateStatus('PDF export failed', 'status-error');
             }
-        });
-
-        const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
-        pdf.save(fileName);
-
-        updateStatus('PDF exported successfully', 'status-saved');
-
-    } catch (error) {
-        console.error('PDF Export Error:', error);
-        alert('Error generating PDF: ' + error.message);
-        updateStatus('PDF export failed', 'status-error');
-    }
-}
+        }
 
         // Setup Event Listeners
         function setupEventListeners() {
@@ -1765,6 +1797,16 @@ if ($data === null) {
         function execCommand(command, value = null) {
             document.execCommand(command, false, value);
             updateToolbarState();
+        }
+
+        function updateToolbarState() {
+            const commands = ['bold', 'italic', 'underline'];
+            commands.forEach(command => {
+                const button = document.getElementById(command + 'Btn');
+                if (button) {
+                    button.classList.toggle('active', document.queryCommandState(command));
+                }
+            });
         }
 
         function toggleFormat(command) {

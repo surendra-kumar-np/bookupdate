@@ -1201,14 +1201,16 @@ if ($data === null) {
 
             const blocks = [];
 
-            Array.from(tempDiv.children).forEach(element => {
+            Array.from(tempDiv.childNodes).forEach(element => {
+                // Only process element nodes
+                if (element.nodeType !== Node.ELEMENT_NODE) return;
                 const tagName = element.tagName.toLowerCase();
 
                 if (tagName.match(/^h[1-6]$/)) {
                     blocks.push({
                         type: 'header',
                         data: {
-                            text: element.innerHTML, // preserves formatting!
+                            text: element.innerHTML,
                             level: parseInt(tagName.substring(1))
                         }
                     });
@@ -1216,7 +1218,7 @@ if ($data === null) {
                     blocks.push({
                         type: 'paragraph',
                         data: {
-                            text: element.innerHTML // preserves formatting!
+                            text: element.innerHTML
                         }
                     });
                 } else if (tagName === 'ul' || tagName === 'ol') {
@@ -1237,12 +1239,68 @@ if ($data === null) {
                             url: element.getAttribute('src')
                         }
                     });
+                } else {
+                    // Agar koi aur tag hai (jaise div, span, blockquote), usko bhi paragraph ki tarah save karo
+                    blocks.push({
+                        type: 'paragraph',
+                        data: {
+                            text: element.innerHTML
+                        }
+                    });
                 }
-
             });
 
             return blocks;
         }
+
+        // function convertHTMLToBlocks(html) {
+        //     const tempDiv = document.createElement('div');
+        //     tempDiv.innerHTML = html;
+
+        //     const blocks = [];
+
+        //     Array.from(tempDiv.children).forEach(element => {
+        //         const tagName = element.tagName.toLowerCase();
+
+        //         if (tagName.match(/^h[1-6]$/)) {
+        //             blocks.push({
+        //                 type: 'header',
+        //                 data: {
+        //                     text: element.innerHTML, // preserves formatting!
+        //                     level: parseInt(tagName.substring(1))
+        //                 }
+        //             });
+        //         } else if (tagName === 'p') {
+        //             blocks.push({
+        //                 type: 'paragraph',
+        //                 data: {
+        //                     text: element.innerHTML // preserves formatting!
+        //                 }
+        //             });
+        //         } else if (tagName === 'ul' || tagName === 'ol') {
+        //             const items = Array.from(element.children)
+        //                 .filter(li => li.tagName.toLowerCase() === 'li')
+        //                 .map(li => li.innerHTML);
+        //             blocks.push({
+        //                 type: 'list',
+        //                 data: {
+        //                     style: tagName === 'ol' ? 'ordered' : 'unordered',
+        //                     items: items
+        //                 }
+        //             });
+        //         } else if (tagName === 'img') {
+        //             blocks.push({
+        //                 type: 'image',
+        //                 data: {
+        //                     url: element.getAttribute('src')
+        //                 }
+        //             });
+        //         }
+
+        //     });
+
+        //     return blocks;
+        // }
 
         // CLEAN PAGE MANAGEMENT - NO ERRORS
         function checkForOverflow() {

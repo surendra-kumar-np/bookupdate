@@ -103,14 +103,7 @@ if ($data === null) {
                                 'author_last_name' => '',
                                 'answer' => json_encode([
                                     'time' => time() * 1000,
-                                    'blocks' => [
-                                        [
-                                            'type' => 'paragraph',
-                                            'data' => [
-                                                'text' => 'Sample content here...'
-                                            ]
-                                        ]
-                                    ]
+                                    'text' => '<p>Start writing your answer here...</p>'
                                 ])
                             ]
                         ]
@@ -819,46 +812,6 @@ if ($data === null) {
     </div>
 
     <script>
-        // function addNewQuestion() {
-        //     let chapterIdx = currentChapter >= 0 ? currentChapter : 0;
-        //     if (!data.chapters || !data.chapters[chapterIdx]) return;
-
-        //     const questions = data.chapters[chapterIdx].questions;
-        //     const newId = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) + 1 : 1;
-
-        //     const newQuestion = {
-        //         id: newId,
-        //         title: 'Untitled Question',
-        //         answers: [{
-        //             id: 1,
-        //             user_id: 1,
-        //             author_first_name: "User",
-        //             author_last_name: "",
-        //             answer: JSON.stringify({
-        //                 time: Date.now(),
-        //                 blocks: [{
-        //                     type: "paragraph",
-        //                     data: {
-        //                         text: ""
-        //                     }
-        //                 }]
-        //             })
-        //         }]
-        //     };
-
-        //     questions.push(newQuestion);
-
-        //     saveToServer();
-        //     loadSidebar();
-
-        //     setTimeout(() => {
-        //         loadQuestion(chapterIdx, questions.length - 1);
-        //         const items = document.querySelectorAll('.question-item');
-        //         if (items.length) {
-        //             items[items.length - 1].classList.add('active');
-        //         }
-        //     }, 200);
-        // }
         function addNewQuestion() {
             let chapterIdx = currentChapter >= 0 ? currentChapter : 0;
             if (!data.chapters || !data.chapters[chapterIdx]) return;
@@ -876,12 +829,7 @@ if ($data === null) {
                     author_last_name: "",
                     answer: JSON.stringify({
                         time: Date.now(),
-                        blocks: [{
-                            type: "paragraph",
-                            data: {
-                                text: ""
-                            }
-                        }]
+                        text: "<p>Start writing your answer here...</p>"
                     })
                 }]
             };
@@ -943,14 +891,11 @@ if ($data === null) {
                 }, 200);
             }
         }
+    </script>
 
-        // Add event listener for the button after DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            const addBtn = document.getElementById('addQuestionBtn');
-            if (addBtn) {
-                addBtn.addEventListener('click', addNewQuestion);
-            }
-        });
+    <script>
+        // ...existing code for addNewQuestion, deleteQuestion, etc...
+
         // Global Variables
         let data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         let currentChapter = -1;
@@ -962,183 +907,83 @@ if ($data === null) {
         let autoSaveCount = 0;
         let lastServerSave = Date.now();
 
-        // Page height monitoring - EXACTLY like Google Docs
-        const MAX_PAGE_HEIGHT = 800; // Exact page content height
+        const MAX_PAGE_HEIGHT = 800;
 
-        // Initialize Application
         document.addEventListener('DOMContentLoaded', function() {
             initializeApp();
+            const addBtn = document.getElementById('addQuestionBtn');
+            if (addBtn) addBtn.addEventListener('click', addNewQuestion);
         });
 
         function initializeApp() {
-            console.log('🚀 Initializing application...');
-
             if (!data || !data.chapters) {
-                console.error('❌ No data loaded');
                 updateStatus('Error: No data loaded', 'status-error');
                 return;
             }
-
             loadSidebar();
             setupEventListeners();
             updateStatus('Ready to edit', 'status-saved');
-
-            // Auto-load first question
             if (data.chapters.length > 0 && data.chapters[0].questions && data.chapters[0].questions.length > 0) {
-                setTimeout(() => {
-                    loadQuestion(0, 0);
-                }, 500);
+                setTimeout(() => loadQuestion(0, 0), 500);
             }
         }
 
-        // Load Sidebar with Questions
         function loadSidebar() {
             const container = document.getElementById('questionsContainer');
             container.innerHTML = '';
-
             if (!data.chapters || data.chapters.length === 0) {
                 container.innerHTML = '<div class="loading">📝 No chapters available</div>';
                 return;
             }
-
             let totalQuestions = 0;
-
             data.chapters.forEach((chapter, chapterIndex) => {
                 if (chapter.questions && chapter.questions.length > 0) {
                     chapter.questions.forEach((question, questionIndex) => {
                         const questionItem = document.createElement('div');
                         questionItem.className = 'question-item';
-                        // questionItem.innerHTML = `
-                        //     <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
-                        //     <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
-                        // `;
-
                         questionItem.innerHTML = `
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <div>
-                                    <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
-                                    <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
-                                </div>
-                                <button class="toolbar-btn" title="Delete Question" style="color:#d93025;font-size:18px;margin-left:8px;" onclick="event.stopPropagation(); deleteQuestion(${chapterIndex},${questionIndex});">✖</button>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div class="question-chapter">${chapter.title || `Chapter ${chapterIndex + 1}`}</div>
+                                <div class="question-title">${question.title || `Question ${questionIndex + 1}`}</div>
                             </div>
-                        `;
-
+                            <button class="toolbar-btn" title="Delete Question" style="color:#d93025;font-size:18px;margin-left:8px;" onclick="event.stopPropagation(); deleteQuestion(${chapterIndex},${questionIndex});">✖</button>
+                        </div>
+                    `;
                         questionItem.onclick = () => {
                             loadQuestion(chapterIndex, questionIndex);
-
-                            // Update active state
                             document.querySelectorAll('.question-item').forEach(item => item.classList.remove('active'));
                             questionItem.classList.add('active');
                         };
-
                         container.appendChild(questionItem);
                         totalQuestions++;
                     });
                 }
             });
-
             if (totalQuestions === 0) {
                 container.innerHTML = '<div class="loading">📝 No questions found</div>';
             }
         }
 
-        // Load Question Content
-        // function loadQuestion(chapterIndex, questionIndex) {
-        //     if (isLoading) return;
-
-        //     // Save current content before switching
-        //     if (currentChapter >= 0 && currentQuestion >= 0) {
-        //         saveCurrentContent();
-        //     }
-
-        //     isLoading = true;
-        //     updateStatus('Loading...', 'status-saving');
-
-        //     currentChapter = chapterIndex;
-        //     currentQuestion = questionIndex;
-
-        //     const question = data.chapters[chapterIndex].questions[questionIndex];
-
-        //     // Load question content
-        //     let content = '';
-        //     if (question.answers && question.answers[0] && question.answers[0].answer) {
-        //         try {
-        //             const answerData = JSON.parse(question.answers[0].answer);
-        //             if (answerData.blocks && Array.isArray(answerData.blocks)) {
-        //                 content = convertBlocksToHTML(answerData.blocks);
-        //             } else {
-        //                 content = '<p>Start writing your answer here...</p>';
-        //             }
-        //         } catch (error) {
-        //             console.error('Error parsing answer:', error);
-        //             content = '<p>Error loading content. Start writing here...</p>';
-        //         }
-        //     } else {
-        //         content = '<p>Start writing your answer here...</p>';
-        //     }
-
-        //     // Reset to single page and load content
-        //     const wrapper = document.getElementById('documentWrapper');
-        //     wrapper.innerHTML = `
-        //         <div class="document-page" id="page-1">
-        //             <div class="page-header">
-        //                 <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title..." value="${question.title || ''}">
-        //             </div>
-        //             <div class="page-content" id="pageContent-1" contenteditable="true">
-        //                 ${content}
-        //             </div>
-        //             <div class="page-number">Page 1</div>
-        //         </div>
-        //     `;
-
-        //     currentPageCount = 1;
-
-        //     // Setup event listeners
-        //     setupPageEventListeners(1);
-
-        //     // Check for page overflow
-        //     setTimeout(() => {
-        //         checkForOverflow();
-        //     }, 100);
-
-        //     isLoading = false;
-        //     updateStatus('Loaded successfully', 'status-saved');
-        // }
         function loadQuestion(chapterIndex, questionIndex) {
             if (isLoading) return;
-
-            // Save current content before switching
-            if (currentChapter >= 0 && currentQuestion >= 0) {
-                saveCurrentContent();
-            }
-
+            if (currentChapter >= 0 && currentQuestion >= 0) saveCurrentContent();
             isLoading = true;
             updateStatus('Loading...', 'status-saving');
-
             currentChapter = chapterIndex;
             currentQuestion = questionIndex;
-
             const question = data.chapters[chapterIndex].questions[questionIndex];
-
-            // Load question content
             let content = '';
             if (question.answers && question.answers[0] && question.answers[0].answer) {
                 try {
                     const answerData = JSON.parse(question.answers[0].answer);
-                    if (answerData.blocks && Array.isArray(answerData.blocks)) {
-                        content = convertBlocksToHTML(answerData.blocks);
-                    } else {
-                        content = '<p>Start writing your answer here...</p>';
-                    }
-                } catch (error) {
-                    console.error('Error parsing answer:', error);
+                    content = answerData.text || '<p>Start writing your answer here...</p>';
+                } catch {
                     content = '<p>Error loading content. Start writing here...</p>';
                 }
             } else {
                 content = '<p>Start writing your answer here...</p>';
             }
-
-            // Reset to single page and load content
             const wrapper = document.getElementById('documentWrapper');
             wrapper.innerHTML = `
                 <div class="document-page" id="page-1">
@@ -1151,217 +996,47 @@ if ($data === null) {
                     <div class="page-number">Page 1</div>
                 </div>
             `;
-
             currentPageCount = 1;
-
-            // Setup event listeners for the new question!
             setupPageEventListeners(1);
-            setupEventListeners(); // <-- ADD THIS LINE
-
-            // Check for page overflow
-            setTimeout(() => {
-                checkForOverflow();
-            }, 100);
-
+            setupEventListeners();
+            setTimeout(checkForOverflow, 100);
             isLoading = false;
             updateStatus('Loaded successfully', 'status-saved');
         }
-        // Convert Blocks to HTML
-        function convertBlocksToHTML(blocks) {
-            if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
-                return '<p>Start writing your answer here...</p>';
-            }
 
-            return blocks.map(block => {
-                if (!block || !block.type) return '';
-
-                switch (block.type) {
-                    case 'paragraph':
-                        return `<p>${block.data && block.data.text ? block.data.text : ''}</p>`;
-                    case 'header':
-                        const level = block.data && block.data.level ? block.data.level : 1;
-                        return `<h${level}>${block.data && block.data.text ? block.data.text : ''}</h${level}>`;
-                    case 'list':
-                        if (!block.data || !block.data.items) return '<ul><li>Empty list</li></ul>';
-                        const listType = block.data.style === 'ordered' ? 'ol' : 'ul';
-                        const items = block.data.items.map(item => `<li>${item}</li>`).join('');
-                        return `<${listType}>${items}</${listType}>`;
-                    case 'image':
-                        return `<img src="${block.data && block.data.url ? block.data.url : ''}" alt="">`;
-                    default:
-                        return `<p>${block.data && block.data.text ? block.data.text : `[${block.type}]`}</p>`;
-                }
-            }).join('') || '<p>Start writing your answer here...</p>';
-        }
-
-        // Convert HTML to Blocks
-        function convertHTMLToBlocks(html) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-
-            const blocks = [];
-
-            Array.from(tempDiv.childNodes).forEach(element => {
-                // Only process element nodes
-                if (element.nodeType !== Node.ELEMENT_NODE) return;
-                const tagName = element.tagName.toLowerCase();
-
-                if (tagName.match(/^h[1-6]$/)) {
-                    blocks.push({
-                        type: 'header',
-                        data: {
-                            text: element.innerHTML,
-                            level: parseInt(tagName.substring(1))
-                        }
-                    });
-                } else if (tagName === 'p') {
-                    blocks.push({
-                        type: 'paragraph',
-                        data: {
-                            text: element.innerHTML
-                        }
-                    });
-                } else if (tagName === 'ul' || tagName === 'ol') {
-                    const items = Array.from(element.children)
-                        .filter(li => li.tagName.toLowerCase() === 'li')
-                        .map(li => li.innerHTML);
-                    blocks.push({
-                        type: 'list',
-                        data: {
-                            style: tagName === 'ol' ? 'ordered' : 'unordered',
-                            items: items
-                        }
-                    });
-                } else if (tagName === 'img') {
-                    blocks.push({
-                        type: 'image',
-                        data: {
-                            url: element.getAttribute('src')
-                        }
-                    });
-                } else {
-                    // Agar koi aur tag hai (jaise div, span, blockquote), usko bhi paragraph ki tarah save karo
-                    blocks.push({
-                        type: 'paragraph',
-                        data: {
-                            text: element.innerHTML
-                        }
-                    });
-                }
-            });
-
-            return blocks;
-        }
-
-        // function convertHTMLToBlocks(html) {
-        //     const tempDiv = document.createElement('div');
-        //     tempDiv.innerHTML = html;
-
-        //     const blocks = [];
-
-        //     Array.from(tempDiv.children).forEach(element => {
-        //         const tagName = element.tagName.toLowerCase();
-
-        //         if (tagName.match(/^h[1-6]$/)) {
-        //             blocks.push({
-        //                 type: 'header',
-        //                 data: {
-        //                     text: element.innerHTML, // preserves formatting!
-        //                     level: parseInt(tagName.substring(1))
-        //                 }
-        //             });
-        //         } else if (tagName === 'p') {
-        //             blocks.push({
-        //                 type: 'paragraph',
-        //                 data: {
-        //                     text: element.innerHTML // preserves formatting!
-        //                 }
-        //             });
-        //         } else if (tagName === 'ul' || tagName === 'ol') {
-        //             const items = Array.from(element.children)
-        //                 .filter(li => li.tagName.toLowerCase() === 'li')
-        //                 .map(li => li.innerHTML);
-        //             blocks.push({
-        //                 type: 'list',
-        //                 data: {
-        //                     style: tagName === 'ol' ? 'ordered' : 'unordered',
-        //                     items: items
-        //                 }
-        //             });
-        //         } else if (tagName === 'img') {
-        //             blocks.push({
-        //                 type: 'image',
-        //                 data: {
-        //                     url: element.getAttribute('src')
-        //                 }
-        //             });
-        //         }
-
-        //     });
-
-        //     return blocks;
-        // }
-
-        // CLEAN PAGE MANAGEMENT - NO ERRORS
         function checkForOverflow() {
-            console.log(`🔍 Checking for overflow...`);
-
-            // Check each page
             for (let pageNum = 1; pageNum <= currentPageCount; pageNum++) {
                 const pageContent = document.getElementById(`pageContent-${pageNum}`);
                 if (pageContent && pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
-                    console.log(`📄 Page ${pageNum} overflowed: ${pageContent.scrollHeight}px > ${MAX_PAGE_HEIGHT}px`);
-
                     const nextPageNum = pageNum + 1;
-
-                    // Create next page if needed
-                    if (!document.getElementById(`page-${nextPageNum}`)) {
-                        createNextPage(nextPageNum);
-                    }
-
-                    // Move content
+                    if (!document.getElementById(`page-${nextPageNum}`)) createNextPage(nextPageNum);
                     moveContentToNextPage(pageNum, nextPageNum);
                     break;
                 }
             }
         }
 
-        // CREATE NEXT PAGE - SIMPLE AND CLEAN
         function createNextPage(pageNumber) {
             const wrapper = document.getElementById('documentWrapper');
-
             const newPage = document.createElement('div');
             newPage.className = 'document-page';
             newPage.id = `page-${pageNumber}`;
-
             newPage.innerHTML = `
-                <div class="page-content" id="pageContent-${pageNumber}" contenteditable="true">
-                </div>
+                <div class="page-content" id="pageContent-${pageNumber}" contenteditable="true"></div>
                 <div class="page-number">Page ${pageNumber}</div>
             `;
-
             wrapper.appendChild(newPage);
             currentPageCount = pageNumber;
-
             setupPageEventListeners(pageNumber);
-
-            console.log(`✅ Created page ${pageNumber}. Total pages: ${currentPageCount}`);
         }
 
-        // MOVE CONTENT TO NEXT PAGE - SIMPLE AND CLEAN
         function moveContentToNextPage(fromPageNum, toPageNum) {
             const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
             const toPage = document.getElementById(`pageContent-${toPageNum}`);
-
             if (!fromPage || !toPage) return;
-
-            console.log(`📋 Moving content from page ${fromPageNum} to page ${toPageNum}`);
-
             const elements = Array.from(fromPage.children);
-            let totalHeight = 0;
-            let splitIndex = elements.length;
-
-            // Find where to split
+            let totalHeight = 0,
+                splitIndex = elements.length;
             for (let i = 0; i < elements.length; i++) {
                 const elementHeight = elements[i].offsetHeight + 20;
                 if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
@@ -1370,398 +1045,434 @@ if ($data === null) {
                 }
                 totalHeight += elementHeight;
             }
-
-            // Move elements
             if (splitIndex < elements.length) {
                 const elementsToMove = elements.slice(splitIndex);
-
-                elementsToMove.forEach(element => {
-                    toPage.appendChild(element);
-                });
-
-                console.log(`✅ Moved ${elementsToMove.length} elements to page ${toPageNum}`);
-
-                // Check if next page also overflows
+                elementsToMove.forEach(element => toPage.appendChild(element));
                 setTimeout(() => {
-                    if (toPage.scrollHeight > MAX_PAGE_HEIGHT) {
-                        checkForOverflow();
-                    }
+                    if (toPage.scrollHeight > MAX_PAGE_HEIGHT) checkForOverflow();
                 }, 100);
+            }
+            // Remove empty pages at the end
+            for (let i = currentPageCount; i > 1; i--) {
+                const pageContent = document.getElementById(`pageContent-${i}`);
+                if (pageContent && pageContent.childNodes.length === 0) {
+                    pageContent.parentNode.remove();
+                    currentPageCount--;
+                }
             }
         }
 
-        // GOOGLE DOCS ENTER KEY BEHAVIOR - CLEAN AND SIMPLE
         function setupPageEventListeners(pageNumber) {
             const pageContent = document.getElementById(`pageContent-${pageNumber}`);
             if (!pageContent) return;
-
-            console.log(`🎧 Setting up listeners for page ${pageNumber}`);
-
             pageContent.addEventListener('input', () => {
                 updateStatus('Editing...', 'status-saving');
                 clearTimeout(autoSaveTimer);
                 clearTimeout(pageBreakTimer);
-
-                pageBreakTimer = setTimeout(() => {
-                    checkForOverflow();
-                }, 200);
-
-                autoSaveTimer = setTimeout(() => {
-                    saveCurrentContent();
-                }, 2000);
+                pageBreakTimer = setTimeout(checkForOverflow, 200);
+                autoSaveTimer = setTimeout(saveCurrentContent, 2000);
             });
-
-            // ENTER KEY HANDLER
+            pageContent.addEventListener('keydown', () => {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(saveCurrentContent, 2000);
+            });
             pageContent.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    console.log(`🔥 ENTER pressed on page ${pageNumber}!`);
-
-                    // Check after Enter creates content
                     requestAnimationFrame(() => {
-                        const currentHeight = pageContent.scrollHeight;
-                        console.log(`📏 Page ${pageNumber} height: ${currentHeight}px (max: ${MAX_PAGE_HEIGHT}px)`);
-
-                        if (currentHeight > MAX_PAGE_HEIGHT) {
-                            console.log(`🚨 OVERFLOW on page ${pageNumber}! Moving to next page...`);
-
+                        if (pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
                             const nextPageNum = pageNumber + 1;
-                            console.log(`🎯 Target: Page ${nextPageNum}`);
-
-                            // Create next page if needed
-                            if (!document.getElementById(`page-${nextPageNum}`)) {
-                                createNextPage(nextPageNum);
-                            }
-
-                            // Move content and cursor
-                            setTimeout(() => {
-                                moveContentAndCursor(pageNumber, nextPageNum);
-                            }, 50);
+                            if (!document.getElementById(`page-${nextPageNum}`)) createNextPage(nextPageNum);
+                            setTimeout(() => moveContentAndCursor(pageNumber, nextPageNum), 50);
                         }
                     });
                 }
             });
+            pageContent.addEventListener('keydown', handleKeydown);
         }
 
-        // MOVE CONTENT AND CURSOR - FIXED GOOGLE DOCS STYLE
         function moveContentAndCursor(fromPageNum, toPageNum) {
             const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
             const toPage = document.getElementById(`pageContent-${toPageNum}`);
+            if (!fromPage || !toPage) return;
 
-            if (!fromPage || !toPage) {
-                console.error(`❌ Pages not found: from=${fromPageNum}, to=${toPageNum}`);
-                return;
+            // Helper to get total height
+            function getTotalHeight(elements) {
+                let total = 0;
+                for (let el of elements) {
+                    total += el.offsetHeight + 20;
+                }
+                return total;
             }
 
-            console.log(`🎯 Moving content and cursor: ${fromPageNum} → ${toPageNum}`);
-
-            // Get all elements from the overflowing page
-            const allElements = Array.from(fromPage.children);
-            if (allElements.length === 0) {
-                console.log(`📝 No elements to move, creating new paragraph on page ${toPageNum}`);
-
-                // Create new paragraph on target page
+            // If fromPage is empty, insert a new paragraph
+            if (fromPage.childNodes.length === 0) {
                 const newPara = document.createElement('p');
                 newPara.innerHTML = '<br>';
                 toPage.appendChild(newPara);
-
-                // Focus and position cursor
                 setTimeout(() => {
                     toPage.focus();
-
                     const range = document.createRange();
                     range.setStart(newPara, 0);
                     range.collapse(true);
-
                     const selection = window.getSelection();
                     selection.removeAllRanges();
                     selection.addRange(range);
-
-                    console.log(`✅ Cursor moved to new paragraph on page ${toPageNum}`);
                 }, 50);
                 return;
             }
 
-            // Calculate what should stay vs what should move
+            // Move content letter by letter
             let totalHeight = 0;
-            let moveFromIndex = allElements.length; // Default: move nothing
-
-            for (let i = 0; i < allElements.length; i++) {
-                const elementHeight = allElements[i].offsetHeight + 20;
-
-                if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
-                    // If this is the first element that causes overflow, we need to move at least this element
-                    moveFromIndex = Math.max(1, i); // Move at least 1 element
-                    console.log(`📊 Split at element ${moveFromIndex}. Total elements: ${allElements.length}`);
+            let moveFromIndex = fromPage.childNodes.length;
+            for (let i = 0; i < fromPage.childNodes.length; i++) {
+                const node = fromPage.childNodes[i];
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    totalHeight += node.offsetHeight + 20;
+                } else if (node.nodeType === Node.TEXT_NODE) {
+                    // Estimate height for text node
+                    const span = document.createElement('span');
+                    span.textContent = node.textContent;
+                    fromPage.appendChild(span);
+                    totalHeight += span.offsetHeight + 20;
+                    fromPage.removeChild(span);
+                }
+                if (totalHeight > MAX_PAGE_HEIGHT) {
+                    moveFromIndex = Math.max(1, i);
                     break;
                 }
-                totalHeight += elementHeight;
             }
 
-            // Move the overflowing elements
-            if (moveFromIndex < allElements.length) {
-                const elementsToMove = allElements.slice(moveFromIndex);
-                console.log(`📋 Moving ${elementsToMove.length} elements from page ${fromPageNum} to page ${toPageNum}`);
-
-                // Move each element to the target page
-                elementsToMove.forEach((element, index) => {
-                    console.log(`📄 Moving element ${index + 1}: ${element.tagName}`);
-                    toPage.appendChild(element);
-                });
-
-                // Focus the target page and position cursor at the first moved element
-                setTimeout(() => {
-                    console.log(`🎯 Focusing page ${toPageNum}`);
-                    toPage.focus();
-
-                    if (elementsToMove.length > 0) {
-                        const firstMovedElement = elementsToMove[0];
-
-                        try {
+            // If we need to move part of a text node, split it letter by letter
+            if (moveFromIndex < fromPage.childNodes.length) {
+                let nodeToSplit = fromPage.childNodes[moveFromIndex];
+                if (nodeToSplit && nodeToSplit.nodeType === Node.TEXT_NODE) {
+                    // Move text letter by letter
+                    let text = nodeToSplit.textContent;
+                    let keepText = '';
+                    let moveText = '';
+                    let tempHeight = totalHeight;
+                    for (let i = 0; i < text.length; i++) {
+                        // Create a span to measure height
+                        const span = document.createElement('span');
+                        span.textContent = keepText + text[i];
+                        fromPage.appendChild(span);
+                        let h = span.offsetHeight + 20;
+                        fromPage.removeChild(span);
+                        if (tempHeight + h > MAX_PAGE_HEIGHT) {
+                            moveText = text.slice(i);
+                            break;
+                        }
+                        keepText += text[i];
+                        tempHeight += h;
+                    }
+                    // Update the original text node
+                    nodeToSplit.textContent = keepText;
+                    // Insert moved text at the start of toPage
+                    if (moveText) {
+                        const newTextNode = document.createTextNode(moveText);
+                        if (toPage.firstChild) {
+                            toPage.insertBefore(newTextNode, toPage.firstChild);
+                        } else {
+                            toPage.appendChild(newTextNode);
+                        }
+                        setTimeout(() => {
+                            toPage.focus();
                             const range = document.createRange();
-
-                            // Position cursor at the beginning of the first moved element
-                            if (firstMovedElement.firstChild && firstMovedElement.firstChild.nodeType === Node.TEXT_NODE) {
-                                range.setStart(firstMovedElement.firstChild, 0);
-                            } else if (firstMovedElement.firstChild) {
-                                range.setStart(firstMovedElement.firstChild, 0);
-                            } else {
-                                range.setStart(firstMovedElement, 0);
-                            }
-
+                            range.setStart(newTextNode, 0);
                             range.collapse(true);
-
                             const selection = window.getSelection();
                             selection.removeAllRanges();
                             selection.addRange(range);
-
-                            console.log(`✅ Cursor positioned at first moved element on page ${toPageNum}`);
-                        } catch (error) {
-                            console.error('Error positioning cursor:', error);
-
-                            // Fallback: position at the beginning of the page
-                            if (toPage.firstChild) {
-                                const range = document.createRange();
-                                range.setStart(toPage.firstChild, 0);
-                                range.collapse(true);
-
-                                const selection = window.getSelection();
-                                selection.removeAllRanges();
-                                selection.addRange(range);
+                        }, 50);
+                    }
+                    // Move any remaining nodes after moveFromIndex
+                    let nextSiblings = [];
+                    let sibling = nodeToSplit.nextSibling;
+                    while (sibling) {
+                        nextSiblings.push(sibling);
+                        sibling = sibling.nextSibling;
+                    }
+                    nextSiblings.forEach(n => toPage.appendChild(n));
+                } else {
+                    // Move all nodes after moveFromIndex
+                    let nodesToMove = [];
+                    for (let i = moveFromIndex; i < fromPage.childNodes.length; ) {
+                        nodesToMove.push(fromPage.childNodes[i]);
+                    }
+                    nodesToMove.forEach(n => toPage.appendChild(n));
+                    setTimeout(() => {
+                        toPage.focus();
+                        if (nodesToMove.length > 0) {
+                            const firstMoved = nodesToMove[0];
+                            const range = document.createRange();
+                            if (firstMoved.nodeType === Node.TEXT_NODE) {
+                                range.setStart(firstMoved, 0);
+                            } else {
+                                range.setStart(firstMoved, 0);
                             }
+                            range.collapse(true);
+                            const selection = window.getSelection();
+                            selection.removeAllRanges();
+                            selection.addRange(range);
                         }
-                    }
-                }, 100);
-            } else {
-                // No elements to move, but still focus next page
-                console.log(`🎯 No elements to move, just focusing page ${toPageNum}`);
-
-                setTimeout(() => {
-                    toPage.focus();
-
-                    // If target page is empty, create a paragraph
-                    if (toPage.children.length === 0) {
-                        const newPara = document.createElement('p');
-                        newPara.innerHTML = '<br>';
-                        toPage.appendChild(newPara);
-                    }
-
-                    // Position cursor at beginning of target page
-                    if (toPage.firstChild) {
-                        const range = document.createRange();
-                        range.setStart(toPage.firstChild, 0);
-                        range.collapse(true);
-
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    }
-
-                    console.log(`✅ Cursor positioned on page ${toPageNum}`);
-                }, 100);
-            }
-
-            // Check if the target page also overflows after moving content
-            setTimeout(() => {
-                const targetHeight = toPage.scrollHeight;
-                if (targetHeight > MAX_PAGE_HEIGHT) {
-                    console.log(`🔄 Page ${toPageNum} also overflowed (${targetHeight}px), checking again...`);
-                    checkForOverflow();
+                    }, 50);
                 }
-            }, 200);
+            }
+        }
+
+        function handleKeydown(event) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+            const range = selection.getRangeAt(0);
+            const currentPage = getCurrentPage(range.startContainer);
+
+            // BACKSPACE at start of page
+            if (event.key === 'Backspace') {
+                const previousPage = getPreviousPage(currentPage);
+                if (previousPage && isAtPageStart(currentPage.querySelector('.page-content'), range)) {
+                    event.preventDefault();
+                    const prevContent = previousPage.querySelector('.page-content');
+                    const currContent = currentPage.querySelector('.page-content');
+                    if (prevContent && currContent) {
+                        // Save current length before merge
+                        const prevLength = prevContent.childNodes.length;
+                        // Move all children
+                        while (currContent.firstChild) {
+                            prevContent.appendChild(currContent.firstChild);
+                        }
+                        // Remove empty page
+                        if (!currContent.hasChildNodes()) {
+                            currentPage.parentNode.removeChild(currentPage);
+                            currentPageCount--;
+                        }
+                        // Set cursor at the join point (start of merged content)
+                        setTimeout(() => {
+                            const sel = window.getSelection();
+                            const newRange = document.createRange();
+                            if (prevContent.childNodes[prevLength]) {
+                                // Place cursor at start of first moved node
+                                let node = prevContent.childNodes[prevLength];
+                                if (node.nodeType === Node.TEXT_NODE) {
+                                    newRange.setStart(node, 0);
+                                } else {
+                                    newRange.setStart(node, 0);
+                                }
+                            } else {
+                                // Fallback: end of prevContent
+                                newRange.selectNodeContents(prevContent);
+                                newRange.collapse(false);
+                            }
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                        }, 0);
+                    }
+                }
+            }
+            // DELETE at end of page
+            else if (event.key === 'Delete') {
+                const nextPage = getNextPage(currentPage);
+                if (nextPage && isAtPageEnd(currentPage.querySelector('.page-content'), range)) {
+                    event.preventDefault();
+                    const currContent = currentPage.querySelector('.page-content');
+                    const nextContent = nextPage.querySelector('.page-content');
+                    if (currContent && nextContent) {
+                        // Save current length before merge
+                        const currLength = currContent.childNodes.length;
+                        // Move all children
+                        while (nextContent.firstChild) {
+                            currContent.appendChild(nextContent.firstChild);
+                        }
+                        // Remove empty page
+                        if (!nextContent.hasChildNodes()) {
+                            nextPage.parentNode.removeChild(nextPage);
+                            currentPageCount--;
+                        }
+                        // Set cursor at the join point (start of first moved node)
+                        setTimeout(() => {
+                            const sel = window.getSelection();
+                            const newRange = document.createRange();
+                            if (currContent.childNodes[currLength]) {
+                                let node = currContent.childNodes[currLength];
+                                if (node.nodeType === Node.TEXT_NODE) {
+                                    newRange.setStart(node, 0);
+                                } else {
+                                    newRange.setStart(node, 0);
+                                }
+                            } else {
+                                // Fallback: end of currContent
+                                newRange.selectNodeContents(currContent);
+                                newRange.collapse(false);
+                            }
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                        }, 0);
+                    }
+                }
+            }
+        }
+
+        function isAtPageStart(pageContent, range) {
+            if (!range.collapsed) return false;
+            if (range.startContainer === pageContent && range.startOffset === 0) return true;
+            if (pageContent.firstChild && range.startContainer === pageContent.firstChild && range.startOffset === 0) return true;
+            let node = range.startContainer;
+            while (node && node !== pageContent) {
+                if (node.previousSibling) return false;
+                node = node.parentNode;
+            }
+            return true;
+        }
+
+        function isAtPageEnd(pageContent, range) {
+            if (!range.collapsed) return false;
+            let node = range.endContainer;
+            let offset = range.endOffset;
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (offset !== node.length) return false;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (offset !== node.childNodes.length) return false;
+            }
+            // Check if at last node
+            let last = pageContent.lastChild;
+            while (last && last.lastChild) last = last.lastChild;
+            return node === last || node === pageContent;
+        }
+
+        function getCurrentPage(container) {
+            while (container && !container.classList?.contains('document-page')) {
+                container = container.parentNode;
+            }
+            return container;
+        }
+
+        function getPreviousPage(currentPage) {
+            if (!currentPage) return null;
+            return currentPage.previousElementSibling && currentPage.previousElementSibling.classList.contains('document-page') ?
+                currentPage.previousElementSibling : null;
+        }
+
+        function getNextPage(currentPage) {
+            if (!currentPage) return null;
+            return currentPage.nextElementSibling && currentPage.nextElementSibling.classList.contains('document-page') ?
+                currentPage.nextElementSibling : null;
         }
 
         function getAllContent() {
             let allContent = '';
             let title = '';
-
             const titleInput = document.getElementById('questionTitle');
-            if (titleInput) {
-                title = titleInput.value;
-            }
-
+            if (titleInput) title = titleInput.value;
             for (let i = 1; i <= currentPageCount; i++) {
                 const pageContent = document.getElementById(`pageContent-${i}`);
-                if (pageContent) {
-                    allContent += pageContent.innerHTML;
-                }
+                if (pageContent) allContent += pageContent.innerHTML;
             }
-
             return {
                 title,
                 content: allContent
             };
         }
 
-        // Auto-save
         function saveCurrentContent() {
             if (currentChapter < 0 || currentQuestion < 0) return;
-
             const allData = getAllContent();
             const title = allData.title;
             const content = allData.content;
-
-            // Update question title
             data.chapters[currentChapter].questions[currentQuestion].title = title;
-
-            // Convert HTML to blocks and save
-            const blocks = convertHTMLToBlocks(content);
-
+            const answerObj = {
+                time: Date.now(),
+                text: content
+            };
             if (!data.chapters[currentChapter].questions[currentQuestion].answers) {
                 data.chapters[currentChapter].questions[currentQuestion].answers = [{
                     id: 1,
                     user_id: 1,
                     author_first_name: "User",
                     author_last_name: "",
-                    answer: JSON.stringify({
-                        time: Date.now(),
-                        blocks: blocks
-                    })
+                    answer: JSON.stringify(answerObj)
                 }];
             } else {
-                data.chapters[currentChapter].questions[currentQuestion].answers[0].answer = JSON.stringify({
-                    time: Date.now(),
-                    blocks: blocks
-                });
+                data.chapters[currentChapter].questions[currentQuestion].answers[0].answer = JSON.stringify(answerObj);
             }
-
             updateStatus('Auto-saved locally', 'status-saved');
-
-            // Trigger server save
             autoSaveCount++;
-            if (autoSaveCount >= 5 || (Date.now() - lastServerSave) > 30000) {
-                saveToServer();
-            }
+            if (autoSaveCount >= 5 || (Date.now() - lastServerSave) > 30000) saveToServer();
         }
 
-        // Server save function
         function saveToServer() {
-            console.log('🌐 Saving to server...');
             updateStatus('Syncing to server...', 'status-saving');
-
             const saveData = {
                 action: 'save',
                 data: data
             };
-
             const xhr = new XMLHttpRequest();
             xhr.open('POST', window.location.href, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-
             xhr.onload = function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try {
-                        // Check if response is HTML instead of JSON
                         if (xhr.responseText.trim().startsWith('<!DOCTYPE') || xhr.responseText.trim().startsWith('<html')) {
-                            console.error('❌ Server returned HTML instead of JSON');
                             updateStatus('Server error: HTML response', 'status-error');
                             return;
                         }
-
                         const result = JSON.parse(xhr.responseText);
                         if (result.success) {
                             updateStatus('Synced to server', 'status-saved');
                             lastServerSave = Date.now();
                             autoSaveCount = 0;
-                            console.log('✅ Server sync successful');
                         } else {
                             updateStatus('Sync failed: ' + (result.message || 'Unknown error'), 'status-error');
                         }
-                    } catch (parseError) {
-                        console.error('❌ JSON parse error:', parseError);
+                    } catch {
                         updateStatus('Server response error', 'status-error');
                     }
                 } else {
                     updateStatus('Server error: ' + xhr.status, 'status-error');
                 }
             };
-
             xhr.onerror = function() {
-                console.error('❌ Network error');
                 updateStatus('Network error', 'status-error');
             };
-
             try {
                 xhr.send(JSON.stringify(saveData));
-            } catch (error) {
-                console.error('❌ Send error:', error);
+            } catch {
                 updateStatus('Send error', 'status-error');
             }
         }
 
-        // Save All Changes
         function saveAllChanges() {
-            if (currentChapter >= 0 && currentQuestion >= 0) {
-                saveCurrentContent();
-            }
-
+            if (currentChapter >= 0 && currentQuestion >= 0) saveCurrentContent();
             updateStatus('Saving all data...', 'status-saving');
             saveToServer();
         }
 
-        // Export to PDF (Basic version)
         function exportToPDF() {
             updateStatus('Generating PDF...', 'status-saving');
-
             if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
                 alert('PDF library not loaded. Please refresh the page and try again.');
                 updateStatus('PDF export failed', 'status-error');
                 return;
             }
-
             try {
                 let jsPDF;
-                if (window.jspdf && window.jspdf.jsPDF) {
-                    jsPDF = window.jspdf.jsPDF;
-                } else if (window.jsPDF) {
-                    jsPDF = window.jsPDF;
-                } else {
-                    throw new Error('jsPDF not found');
-                }
-
+                if (window.jspdf && window.jspdf.jsPDF) jsPDF = window.jspdf.jsPDF;
+                else if (window.jsPDF) jsPDF = window.jsPDF;
+                else throw new Error('jsPDF not found');
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pages = document.querySelectorAll('.document-page');
                 let y = 20;
-
-                // Set default font for the whole document
-                pdf.setFont('Times', 'normal'); // Or 'helvetica', 'normal'
-
-                // Title
+                pdf.setFont('Times', 'normal');
                 pdf.setFontSize(16);
                 pdf.text('Book Export', 20, y);
                 y += 10;
-
-                // Date
                 pdf.setFontSize(12);
                 pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, y);
                 y += 15;
-
                 pages.forEach((page, idx) => {
                     if (idx > 0) {
                         pdf.addPage();
-                        pdf.setFont('Times', 'normal'); // Ensure font stays same on new page
+                        pdf.setFont('Times', 'normal');
                         y = 20;
                     }
-                    // Page header (question title)
                     const titleInput = page.querySelector('.question-title-input');
                     if (titleInput && titleInput.value) {
                         pdf.setFont('Times', 'bold');
@@ -1770,8 +1481,6 @@ if ($data === null) {
                         pdf.text(wrappedTitle, 20, y);
                         y += wrappedTitle.length * 8;
                     }
-
-                    // Page content
                     const contentDiv = page.querySelector('.page-content');
                     if (contentDiv) {
                         pdf.setFont('Times', 'normal');
@@ -1781,22 +1490,15 @@ if ($data === null) {
                         pdf.text(lines, 20, y);
                     }
                 });
-
                 const fileName = `Book_Export_${new Date().toISOString().split('T')[0]}.pdf`;
                 pdf.save(fileName);
-
                 updateStatus('PDF exported successfully', 'status-saved');
-
             } catch (error) {
-                console.error('PDF Export Error:', error);
-                alert('Error generating PDF: ' + error.message);
                 updateStatus('PDF export failed', 'status-error');
             }
         }
 
-        // Setup Event Listeners
         function setupEventListeners() {
-            // Title input
             const titleInput = document.getElementById('questionTitle');
             if (titleInput) {
                 titleInput.addEventListener('input', () => {
@@ -1807,17 +1509,18 @@ if ($data === null) {
                         loadSidebar();
                     }, 2000);
                 });
-            }
-
-            // Search functionality
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    filterQuestions(e.target.value);
+                titleInput.addEventListener('keydown', () => {
+                    clearTimeout(autoSaveTimer);
+                    autoSaveTimer = setTimeout(() => {
+                        saveCurrentContent();
+                        loadSidebar();
+                    }, 2000);
                 });
             }
-
-            // Keyboard shortcuts
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => filterQuestions(e.target.value));
+            }
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey || e.metaKey) {
                     switch (e.key) {
@@ -1844,14 +1547,10 @@ if ($data === null) {
                     }
                 }
             });
-
             document.addEventListener('selectionchange', updateToolbarState);
-
-            // Setup first page listeners
             setupPageEventListeners(1);
         }
 
-        // Formatting Functions
         function execCommand(command, value = null) {
             document.execCommand(command, false, value);
             updateToolbarState();
@@ -1861,9 +1560,7 @@ if ($data === null) {
             const commands = ['bold', 'italic', 'underline'];
             commands.forEach(command => {
                 const button = document.getElementById(command + 'Btn');
-                if (button) {
-                    button.classList.toggle('active', document.queryCommandState(command));
-                }
+                if (button) button.classList.toggle('active', document.queryCommandState(command));
             });
         }
 
@@ -1900,16 +1597,12 @@ if ($data === null) {
 
         function insertLink() {
             const url = prompt('Enter URL:');
-            if (url) {
-                execCommand('createLink', url);
-            }
+            if (url) execCommand('createLink', url);
         }
 
         function insertImage() {
             const url = prompt('Enter image URL:');
-            if (url) {
-                execCommand('insertImage', url);
-            }
+            if (url) execCommand('insertImage', url);
         }
 
         function printDocument() {
@@ -1919,13 +1612,10 @@ if ($data === null) {
         function filterQuestions(searchTerm) {
             const container = document.getElementById('questionsContainer');
             const items = container.querySelectorAll('.question-item');
-
             items.forEach(item => {
                 const chapterText = item.querySelector('.question-chapter').textContent.toLowerCase();
                 const questionText = item.querySelector('.question-title').textContent.toLowerCase();
-                const matches = chapterText.includes(searchTerm.toLowerCase()) ||
-                    questionText.includes(searchTerm.toLowerCase());
-
+                const matches = chapterText.includes(searchTerm.toLowerCase()) || questionText.includes(searchTerm.toLowerCase());
                 item.style.display = matches ? 'block' : 'none';
             });
         }
@@ -1933,128 +1623,9 @@ if ($data === null) {
         function updateStatus(message, className) {
             const statusText = document.getElementById('statusText');
             const statusIndicator = document.getElementById('statusIndicator');
-
             statusText.textContent = message;
             statusIndicator.className = 'status-indicator ' + className;
         }
-
-        function handleKeydown(event) {
-            if (event.key === 'Backspace') {
-                const selection = window.getSelection();
-                if (!selection.rangeCount) return;
-                const range = selection.getRangeAt(0);
-                const currentPage = getCurrentPage(range.startContainer);
-                const previousPage = getPreviousPage(currentPage);
-
-                if (previousPage && isAtPageStart(currentPage.querySelector('.page-content'), range)) {
-                    event.preventDefault();
-                    const prevContent = previousPage.querySelector('.page-content');
-                    if (prevContent) {
-                        prevContent.focus();
-                        // Move cursor to end
-                        const range = document.createRange();
-                        range.selectNodeContents(prevContent);
-                        range.collapse(false);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            } else if (event.key === 'Delete') {
-                const selection = window.getSelection();
-                if (!selection.rangeCount) return;
-                const range = selection.getRangeAt(0);
-                const currentPage = getCurrentPage(range.startContainer);
-                const nextPage = getNextPage(currentPage);
-
-                if (nextPage && isAtPageEnd(currentPage.querySelector('.page-content'), range)) {
-                    event.preventDefault();
-                    const nextContent = nextPage.querySelector('.page-content');
-                    if (nextContent) {
-                        nextContent.focus();
-                        // Move cursor to start
-                        const range = document.createRange();
-                        range.selectNodeContents(nextContent);
-                        range.collapse(true);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            }
-        }
-
-        function isAtPageStart(pageContent, range) {
-            const startContainer = range.startContainer;
-            const startOffset = range.startOffset;
-
-            if (startOffset !== 0) return false;
-
-            const walker = document.createTreeWalker(
-                pageContent,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-
-            const firstTextNode = walker.nextNode();
-
-            if (!firstTextNode) {
-                return true;
-            }
-
-            return startContainer === firstTextNode ||
-                (startContainer.nodeType === Node.ELEMENT_NODE &&
-                    startContainer === pageContent.firstElementChild);
-        }
-
-        function isAtPageEnd(pageContent, range) {
-            const endContainer = range.endContainer;
-            const endOffset = range.endOffset;
-
-            if (endOffset !== endContainer.length) return false;
-
-            const walker = document.createTreeWalker(
-                pageContent,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-
-            const lastTextNode = walker.nextNode();
-
-            if (!lastTextNode) {
-                return true;
-            }
-
-            return endContainer === lastTextNode ||
-                (endContainer.nodeType === Node.ELEMENT_NODE &&
-                    endContainer === pageContent.lastElementChild);
-        }
-
-        function getCurrentPage(container) {
-            // Traverse up to find the parent .document-page
-            while (container && !container.classList?.contains('document-page')) {
-                container = container.parentNode;
-            }
-            return container;
-        }
-
-        function getPreviousPage(currentPage) {
-            if (!currentPage) return null;
-            return currentPage.previousElementSibling && currentPage.previousElementSibling.classList.contains('document-page') ?
-                currentPage.previousElementSibling :
-                null;
-        }
-
-        function getNextPage(currentPage) {
-            if (!currentPage) return null;
-            return currentPage.nextElementSibling && currentPage.nextElementSibling.classList.contains('document-page') ?
-                currentPage.nextElementSibling :
-                null;
-        }
-
-        document.addEventListener('keydown', handleKeydown);
     </script>
 </body>
 

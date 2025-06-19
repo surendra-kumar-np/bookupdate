@@ -129,549 +129,8 @@ if ($data === null) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <link rel="stylesheet" href="./assets/styles.css">
 
-        body {
-            font-family: 'Google Sans', 'Roboto', sans-serif;
-            background: #f9fbfd;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Google Docs Header */
-        .header {
-            background: #fff;
-            border-bottom: 1px solid #e8eaed;
-            height: 64px;
-            display: flex;
-            align-items: center;
-            padding: 0 24px;
-            position: relative;
-            z-index: 1000;
-            box-shadow: 0 1px 3px rgba(60, 64, 67, .1);
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .docs-icon {
-            width: 40px;
-            height: 40px;
-            background: #4285f4;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 500;
-            font-size: 18px;
-        }
-
-        .document-name {
-            font-size: 18px;
-            color: #3c4043;
-            font-weight: 400;
-            border: none;
-            background: transparent;
-            outline: none;
-            padding: 6px 8px;
-            border-radius: 4px;
-            min-width: 200px;
-        }
-
-        .document-name:hover {
-            background: #f8f9fa;
-        }
-
-        .header-right {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .status-indicator {
-            font-size: 13px;
-            color: #5f6368;
-            padding: 4px 8px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            border: 1px solid #dadce0;
-        }
-
-        .status-saving {
-            color: #1a73e8;
-            background: #e8f0fe;
-        }
-
-        .status-saved {
-            color: #137333;
-            background: #e6f4ea;
-        }
-
-        .status-error {
-            color: #d93025;
-            background: #fce8e6;
-        }
-
-        .share-btn {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background 0.2s;
-        }
-
-        .share-btn:hover {
-            background: #1557b8;
-        }
-
-        /* Google Docs Toolbar */
-        .toolbar-container {
-            background: white;
-            border-bottom: 1px solid #e8eaed;
-            position: relative;
-        }
-
-        .toolbar {
-            display: flex;
-            align-items: center;
-            padding: 8px 24px;
-            gap: 2px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-
-        .toolbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .toolbar-section {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            padding: 0 6px;
-            border-right: 1px solid #e8eaed;
-            margin-right: 8px;
-        }
-
-        .toolbar-section:last-child {
-            border-right: none;
-            margin-right: 0;
-        }
-
-        .toolbar-btn {
-            min-width: 28px;
-            height: 28px;
-            border: none;
-            background: transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #3c4043;
-            position: relative;
-            transition: background 0.2s;
-        }
-
-        .toolbar-btn:hover {
-            background: #f8f9fa;
-        }
-
-        .toolbar-btn.active {
-            background: #e8f0fe;
-            color: #1a73e8;
-        }
-
-        .toolbar-select {
-            border: none;
-            background: transparent;
-            padding: 4px 6px;
-            border-radius: 4px;
-            font-size: 14px;
-            color: #3c4043;
-            cursor: pointer;
-            min-width: 80px;
-        }
-
-        .toolbar-select:hover {
-            background: #f8f9fa;
-        }
-
-        .font-family-select {
-            min-width: 140px;
-        }
-
-        .font-size-select {
-            min-width: 60px;
-        }
-
-        /* Main Layout */
-        .main-layout {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-right: 1px solid #e8eaed;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .sidebar-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #e8eaed;
-            background: #f8f9fa;
-        }
-
-        .sidebar-title {
-            font-size: 16px;
-            font-weight: 500;
-            color: #3c4043;
-            margin-bottom: 12px;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #dadce0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
-            outline: none;
-        }
-
-        .search-input:focus {
-            border-color: #1a73e8;
-            box-shadow: 0 0 0 2px rgba(26, 115, 232, .2);
-        }
-
-        .questions-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px;
-        }
-
-        .question-item {
-            padding: 12px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 4px;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-
-        .question-item:hover {
-            background: #f8f9fa;
-        }
-
-        .question-item.active {
-            background: #e8f0fe;
-            border-color: #1a73e8;
-        }
-
-        .question-chapter {
-            font-size: 12px;
-            color: #5f6368;
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .question-title {
-            font-size: 14px;
-            color: #3c4043;
-            line-height: 1.4;
-        }
-
-        /* 
-        .question-title-input {
-            width: 100%;
-            font-size: 24px;
-            font-weight: 400;
-            color: #3c4043;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-family: 'Google Sans', sans-serif;
-            padding: 8px 0;
-            resize: none;
-            line-height: 1.4;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-        } */
-
-        /* Editor Area */
-        .editor-area {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            background: #f9fbfd;
-            overflow-y: auto;
-            padding: 24px;
-        }
-
-        .document-wrapper {
-            width: 100%;
-            max-width: 816px;
-        }
-
-        /* Document Pages with Auto Page Break */
-        .document-page {
-            background: white;
-            width: 816px;
-            min-height: 1056px;
-            max-height: 1056px;
-            margin: 0 auto 24px;
-            padding: 96px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, .1);
-            border-radius: 2px;
-            position: relative;
-            overflow: hidden;
-            page-break-after: always;
-        }
-
-        .document-page:last-child {
-            page-break-after: avoid;
-        }
-
-        .page-header {
-            margin-bottom: 24px;
-            border-bottom: 1px solid #e8eaed;
-            padding-bottom: 16px;
-        }
-
-        .question-title-input {
-            width: 100%;
-            font-size: 24px;
-            font-weight: 400;
-            color: #3c4043;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-family: 'Google Sans', sans-serif;
-            padding: 8px 0;
-        }
-
-        .question-title-input::placeholder {
-            color: #9aa0a6;
-        }
-
-        .page-content {
-            min-height: 600px;
-            max-height: 864px;
-            font-family: 'Times New Roman', serif;
-            font-size: 12pt;
-            line-height: 1.15;
-            color: #000;
-            outline: none;
-            word-wrap: break-word;
-            overflow: visible;
-        }
-
-        .page-content:empty::before {
-            content: 'Start writing your answer here...';
-            color: #9aa0a6;
-            font-style: italic;
-        }
-
-        .page-number {
-            position: absolute;
-            bottom: 24px;
-            right: 32px;
-            font-size: 10px;
-            color: #5f6368;
-        }
-
-        /* Content Formatting */
-        .page-content h1,
-        .page-content h2,
-        .page-content h3,
-        .page-content h4,
-        .page-content h5,
-        .page-content h6 {
-            margin: 16px 0 8px 0;
-            font-weight: bold;
-        }
-
-        .page-content h1 {
-            font-size: 20pt;
-        }
-
-        .page-content h2 {
-            font-size: 16pt;
-        }
-
-        .page-content h3 {
-            font-size: 14pt;
-        }
-
-        .page-content h4 {
-            font-size: 12pt;
-        }
-
-        .page-content h5 {
-            font-size: 11pt;
-        }
-
-        .page-content h6 {
-            font-size: 10pt;
-        }
-
-        .page-content p {
-            margin: 0 0 12px 0;
-        }
-
-        .page-content ul,
-        .page-content ol {
-            margin: 12px 0;
-            padding-left: 36px;
-        }
-
-        .page-content li {
-            margin-bottom: 6px;
-        }
-
-        .page-content blockquote {
-            margin: 12px 0;
-            padding-left: 24px;
-            border-left: 4px solid #dadce0;
-            color: #5f6368;
-            font-style: italic;
-        }
-
-        .page-content img {
-            max-width: 100%;
-            height: auto;
-            margin: 12px 0;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
-        }
-
-        .page-content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-        }
-
-        .page-content th,
-        .page-content td {
-            border: 1px solid #dadce0;
-            padding: 8px 12px;
-            text-align: left;
-        }
-
-        .page-content th {
-            background: #f8f9fa;
-            font-weight: 500;
-        }
-
-        /* Loading States */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-            color: #5f6368;
-            font-style: italic;
-        }
-
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #1a73e8;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 12px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Print Styles */
-        @media print {
-            body {
-                background: white;
-                margin: 0;
-                padding: 0;
-            }
-
-            .header,
-            .toolbar-container,
-            .sidebar {
-                display: none !important;
-            }
-
-            .main-layout {
-                display: block;
-            }
-
-            .editor-area {
-                padding: 0;
-                background: white;
-            }
-
-            .document-page {
-                margin: 0;
-                box-shadow: none;
-                border-radius: 0;
-                page-break-after: always;
-            }
-
-            .document-page:last-child {
-                page-break-after: avoid;
-            }
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-    </style>
 </head>
 
 <body>
@@ -907,7 +366,7 @@ if ($data === null) {
         let autoSaveCount = 0;
         let lastServerSave = Date.now();
 
-        const MAX_PAGE_HEIGHT = 800;
+        const MAX_PAGE_HEIGHT = 820; // Maximum height for a page in pixels
 
         document.addEventListener('DOMContentLoaded', function() {
             initializeApp();
@@ -963,413 +422,6 @@ if ($data === null) {
             if (totalQuestions === 0) {
                 container.innerHTML = '<div class="loading">📝 No questions found</div>';
             }
-        }
-
-        function loadQuestion(chapterIndex, questionIndex) {
-            if (isLoading) return;
-            if (currentChapter >= 0 && currentQuestion >= 0) saveCurrentContent();
-            isLoading = true;
-            updateStatus('Loading...', 'status-saving');
-            currentChapter = chapterIndex;
-            currentQuestion = questionIndex;
-            const question = data.chapters[chapterIndex].questions[questionIndex];
-            let content = '';
-            if (question.answers && question.answers[0] && question.answers[0].answer) {
-                try {
-                    const answerData = JSON.parse(question.answers[0].answer);
-                    content = answerData.text || '<p>Start writing your answer here...</p>';
-                } catch {
-                    content = '<p>Error loading content. Start writing here...</p>';
-                }
-            } else {
-                content = '<p>Start writing your answer here...</p>';
-            }
-            const wrapper = document.getElementById('documentWrapper');
-            wrapper.innerHTML = `
-                <div class="document-page" id="page-1">
-                    <div class="page-header">
-                        <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title..." value="${question.title || ''}">
-                    </div>
-                    <div class="page-content" id="pageContent-1" contenteditable="true">
-                        ${content}
-                    </div>
-                    <div class="page-number">Page 1</div>
-                </div>
-            `;
-            currentPageCount = 1;
-            setupPageEventListeners(1);
-            setupEventListeners();
-            setTimeout(checkForOverflow, 100);
-            isLoading = false;
-            updateStatus('Loaded successfully', 'status-saved');
-        }
-
-        function checkForOverflow() {
-            for (let pageNum = 1; pageNum <= currentPageCount; pageNum++) {
-                const pageContent = document.getElementById(`pageContent-${pageNum}`);
-                if (pageContent && pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
-                    const nextPageNum = pageNum + 1;
-                    if (!document.getElementById(`page-${nextPageNum}`)) createNextPage(nextPageNum);
-                    moveContentToNextPage(pageNum, nextPageNum);
-                    break;
-                }
-            }
-        }
-
-        function createNextPage(pageNumber) {
-            const wrapper = document.getElementById('documentWrapper');
-            const newPage = document.createElement('div');
-            newPage.className = 'document-page';
-            newPage.id = `page-${pageNumber}`;
-            newPage.innerHTML = `
-                <div class="page-content" id="pageContent-${pageNumber}" contenteditable="true"></div>
-                <div class="page-number">Page ${pageNumber}</div>
-            `;
-            wrapper.appendChild(newPage);
-            currentPageCount = pageNumber;
-            setupPageEventListeners(pageNumber);
-        }
-
-        function moveContentToNextPage(fromPageNum, toPageNum) {
-            const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
-            const toPage = document.getElementById(`pageContent-${toPageNum}`);
-            if (!fromPage || !toPage) return;
-            const elements = Array.from(fromPage.children);
-            let totalHeight = 0,
-                splitIndex = elements.length;
-            for (let i = 0; i < elements.length; i++) {
-                const elementHeight = elements[i].offsetHeight + 20;
-                if (totalHeight + elementHeight > MAX_PAGE_HEIGHT) {
-                    splitIndex = i;
-                    break;
-                }
-                totalHeight += elementHeight;
-            }
-            if (splitIndex < elements.length) {
-                const elementsToMove = elements.slice(splitIndex);
-                elementsToMove.forEach(element => toPage.appendChild(element));
-                setTimeout(() => {
-                    if (toPage.scrollHeight > MAX_PAGE_HEIGHT) checkForOverflow();
-                }, 100);
-            }
-            // Remove empty pages at the end
-            for (let i = currentPageCount; i > 1; i--) {
-                const pageContent = document.getElementById(`pageContent-${i}`);
-                if (pageContent && pageContent.childNodes.length === 0) {
-                    pageContent.parentNode.remove();
-                    currentPageCount--;
-                }
-            }
-        }
-
-        function setupPageEventListeners(pageNumber) {
-            const pageContent = document.getElementById(`pageContent-${pageNumber}`);
-            if (!pageContent) return;
-            pageContent.addEventListener('input', () => {
-                updateStatus('Editing...', 'status-saving');
-                clearTimeout(autoSaveTimer);
-                clearTimeout(pageBreakTimer);
-                pageBreakTimer = setTimeout(checkForOverflow, 200);
-                autoSaveTimer = setTimeout(saveCurrentContent, 2000);
-            });
-            pageContent.addEventListener('keydown', () => {
-                clearTimeout(autoSaveTimer);
-                autoSaveTimer = setTimeout(saveCurrentContent, 2000);
-            });
-            pageContent.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    requestAnimationFrame(() => {
-                        if (pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
-                            const nextPageNum = pageNumber + 1;
-                            if (!document.getElementById(`page-${nextPageNum}`)) createNextPage(nextPageNum);
-                            setTimeout(() => moveContentAndCursor(pageNumber, nextPageNum), 50);
-                        }
-                    });
-                }
-            });
-            pageContent.addEventListener('keydown', handleKeydown);
-        }
-
-        function moveContentAndCursor(fromPageNum, toPageNum) {
-            const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
-            const toPage = document.getElementById(`pageContent-${toPageNum}`);
-            if (!fromPage || !toPage) return;
-
-            // Helper to get total height
-            function getTotalHeight(elements) {
-                let total = 0;
-                for (let el of elements) {
-                    total += el.offsetHeight + 20;
-                }
-                return total;
-            }
-
-            // If fromPage is empty, insert a new paragraph
-            if (fromPage.childNodes.length === 0) {
-                const newPara = document.createElement('p');
-                newPara.innerHTML = '<br>';
-                toPage.appendChild(newPara);
-                setTimeout(() => {
-                    toPage.focus();
-                    const range = document.createRange();
-                    range.setStart(newPara, 0);
-                    range.collapse(true);
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }, 50);
-                return;
-            }
-
-            // Move content letter by letter
-            let totalHeight = 0;
-            let moveFromIndex = fromPage.childNodes.length;
-            for (let i = 0; i < fromPage.childNodes.length; i++) {
-                const node = fromPage.childNodes[i];
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    totalHeight += node.offsetHeight + 20;
-                } else if (node.nodeType === Node.TEXT_NODE) {
-                    // Estimate height for text node
-                    const span = document.createElement('span');
-                    span.textContent = node.textContent;
-                    fromPage.appendChild(span);
-                    totalHeight += span.offsetHeight + 20;
-                    fromPage.removeChild(span);
-                }
-                if (totalHeight > MAX_PAGE_HEIGHT) {
-                    moveFromIndex = Math.max(1, i);
-                    break;
-                }
-            }
-
-            // If we need to move part of a text node, split it letter by letter
-            if (moveFromIndex < fromPage.childNodes.length) {
-                let nodeToSplit = fromPage.childNodes[moveFromIndex];
-                if (nodeToSplit && nodeToSplit.nodeType === Node.TEXT_NODE) {
-                    // Move text letter by letter
-                    let text = nodeToSplit.textContent;
-                    let keepText = '';
-                    let moveText = '';
-                    let tempHeight = totalHeight;
-                    for (let i = 0; i < text.length; i++) {
-                        // Create a span to measure height
-                        const span = document.createElement('span');
-                        span.textContent = keepText + text[i];
-                        fromPage.appendChild(span);
-                        let h = span.offsetHeight + 20;
-                        fromPage.removeChild(span);
-                        if (tempHeight + h > MAX_PAGE_HEIGHT) {
-                            moveText = text.slice(i);
-                            break;
-                        }
-                        keepText += text[i];
-                        tempHeight += h;
-                    }
-                    // Update the original text node
-                    nodeToSplit.textContent = keepText;
-                    // Insert moved text at the start of toPage
-                    if (moveText) {
-                        const newTextNode = document.createTextNode(moveText);
-                        if (toPage.firstChild) {
-                            toPage.insertBefore(newTextNode, toPage.firstChild);
-                        } else {
-                            toPage.appendChild(newTextNode);
-                        }
-                        setTimeout(() => {
-                            toPage.focus();
-                            const range = document.createRange();
-                            range.setStart(newTextNode, 0);
-                            range.collapse(true);
-                            const selection = window.getSelection();
-                            selection.removeAllRanges();
-                            selection.addRange(range);
-                        }, 50);
-                    }
-                    // Move any remaining nodes after moveFromIndex
-                    let nextSiblings = [];
-                    let sibling = nodeToSplit.nextSibling;
-                    while (sibling) {
-                        nextSiblings.push(sibling);
-                        sibling = sibling.nextSibling;
-                    }
-                    nextSiblings.forEach(n => toPage.appendChild(n));
-                } else {
-                    // Move all nodes after moveFromIndex
-                    let nodesToMove = [];
-                    for (let i = moveFromIndex; i < fromPage.childNodes.length; ) {
-                        nodesToMove.push(fromPage.childNodes[i]);
-                    }
-                    nodesToMove.forEach(n => toPage.appendChild(n));
-                    setTimeout(() => {
-                        toPage.focus();
-                        if (nodesToMove.length > 0) {
-                            const firstMoved = nodesToMove[0];
-                            const range = document.createRange();
-                            if (firstMoved.nodeType === Node.TEXT_NODE) {
-                                range.setStart(firstMoved, 0);
-                            } else {
-                                range.setStart(firstMoved, 0);
-                            }
-                            range.collapse(true);
-                            const selection = window.getSelection();
-                            selection.removeAllRanges();
-                            selection.addRange(range);
-                        }
-                    }, 50);
-                }
-            }
-        }
-
-        function handleKeydown(event) {
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
-            const range = selection.getRangeAt(0);
-            const currentPage = getCurrentPage(range.startContainer);
-
-            // BACKSPACE at start of page
-            if (event.key === 'Backspace') {
-                const previousPage = getPreviousPage(currentPage);
-                if (previousPage && isAtPageStart(currentPage.querySelector('.page-content'), range)) {
-                    event.preventDefault();
-                    const prevContent = previousPage.querySelector('.page-content');
-                    const currContent = currentPage.querySelector('.page-content');
-                    if (prevContent && currContent) {
-                        // Save current length before merge
-                        const prevLength = prevContent.childNodes.length;
-                        // Move all children
-                        while (currContent.firstChild) {
-                            prevContent.appendChild(currContent.firstChild);
-                        }
-                        // Remove empty page
-                        if (!currContent.hasChildNodes()) {
-                            currentPage.parentNode.removeChild(currentPage);
-                            currentPageCount--;
-                        }
-                        // Set cursor at the join point (start of merged content)
-                        setTimeout(() => {
-                            const sel = window.getSelection();
-                            const newRange = document.createRange();
-                            if (prevContent.childNodes[prevLength]) {
-                                // Place cursor at start of first moved node
-                                let node = prevContent.childNodes[prevLength];
-                                if (node.nodeType === Node.TEXT_NODE) {
-                                    newRange.setStart(node, 0);
-                                } else {
-                                    newRange.setStart(node, 0);
-                                }
-                            } else {
-                                // Fallback: end of prevContent
-                                newRange.selectNodeContents(prevContent);
-                                newRange.collapse(false);
-                            }
-                            sel.removeAllRanges();
-                            sel.addRange(newRange);
-                        }, 0);
-                    }
-                }
-            }
-            // DELETE at end of page
-            else if (event.key === 'Delete') {
-                const nextPage = getNextPage(currentPage);
-                if (nextPage && isAtPageEnd(currentPage.querySelector('.page-content'), range)) {
-                    event.preventDefault();
-                    const currContent = currentPage.querySelector('.page-content');
-                    const nextContent = nextPage.querySelector('.page-content');
-                    if (currContent && nextContent) {
-                        // Save current length before merge
-                        const currLength = currContent.childNodes.length;
-                        // Move all children
-                        while (nextContent.firstChild) {
-                            currContent.appendChild(nextContent.firstChild);
-                        }
-                        // Remove empty page
-                        if (!nextContent.hasChildNodes()) {
-                            nextPage.parentNode.removeChild(nextPage);
-                            currentPageCount--;
-                        }
-                        // Set cursor at the join point (start of first moved node)
-                        setTimeout(() => {
-                            const sel = window.getSelection();
-                            const newRange = document.createRange();
-                            if (currContent.childNodes[currLength]) {
-                                let node = currContent.childNodes[currLength];
-                                if (node.nodeType === Node.TEXT_NODE) {
-                                    newRange.setStart(node, 0);
-                                } else {
-                                    newRange.setStart(node, 0);
-                                }
-                            } else {
-                                // Fallback: end of currContent
-                                newRange.selectNodeContents(currContent);
-                                newRange.collapse(false);
-                            }
-                            sel.removeAllRanges();
-                            sel.addRange(newRange);
-                        }, 0);
-                    }
-                }
-            }
-        }
-
-        function isAtPageStart(pageContent, range) {
-            if (!range.collapsed) return false;
-            if (range.startContainer === pageContent && range.startOffset === 0) return true;
-            if (pageContent.firstChild && range.startContainer === pageContent.firstChild && range.startOffset === 0) return true;
-            let node = range.startContainer;
-            while (node && node !== pageContent) {
-                if (node.previousSibling) return false;
-                node = node.parentNode;
-            }
-            return true;
-        }
-
-        function isAtPageEnd(pageContent, range) {
-            if (!range.collapsed) return false;
-            let node = range.endContainer;
-            let offset = range.endOffset;
-            if (node.nodeType === Node.TEXT_NODE) {
-                if (offset !== node.length) return false;
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                if (offset !== node.childNodes.length) return false;
-            }
-            // Check if at last node
-            let last = pageContent.lastChild;
-            while (last && last.lastChild) last = last.lastChild;
-            return node === last || node === pageContent;
-        }
-
-        function getCurrentPage(container) {
-            while (container && !container.classList?.contains('document-page')) {
-                container = container.parentNode;
-            }
-            return container;
-        }
-
-        function getPreviousPage(currentPage) {
-            if (!currentPage) return null;
-            return currentPage.previousElementSibling && currentPage.previousElementSibling.classList.contains('document-page') ?
-                currentPage.previousElementSibling : null;
-        }
-
-        function getNextPage(currentPage) {
-            if (!currentPage) return null;
-            return currentPage.nextElementSibling && currentPage.nextElementSibling.classList.contains('document-page') ?
-                currentPage.nextElementSibling : null;
-        }
-
-        function getAllContent() {
-            let allContent = '';
-            let title = '';
-            const titleInput = document.getElementById('questionTitle');
-            if (titleInput) title = titleInput.value;
-            for (let i = 1; i <= currentPageCount; i++) {
-                const pageContent = document.getElementById(`pageContent-${i}`);
-                if (pageContent) allContent += pageContent.innerHTML;
-            }
-            return {
-                title,
-                content: allContent
-            };
         }
 
         function saveCurrentContent() {
@@ -1443,6 +495,345 @@ if ($data === null) {
             if (currentChapter >= 0 && currentQuestion >= 0) saveCurrentContent();
             updateStatus('Saving all data...', 'status-saving');
             saveToServer();
+        }
+
+        // 1. Pagination: Recursively split until all pages fit
+        function checkForOverflow() {
+            let splitHua = false;
+            for (let pageNum = 1; pageNum <= currentPageCount; pageNum++) {
+                const pageContent = document.getElementById(`pageContent-${pageNum}`);
+                if (pageContent && pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
+                    const nextPageNum = pageNum + 1;
+                    if (!document.getElementById(`page-${nextPageNum}`)) createNextPage(nextPageNum);
+                    moveContentToNextPage(pageNum, nextPageNum);
+                    splitHua = true;
+                }
+            }
+            // Agar split hua hai, firse check karo (recursively)
+            if (splitHua) setTimeout(checkForOverflow, 100);
+            // Remove empty pages except first
+            removeEmptyPages();
+        }
+
+        // 2. Move overflow content to next page (block-wise, not character-wise)
+        function moveContentToNextPage(fromPageNum, toPageNum) {
+            const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
+            const toPage = document.getElementById(`pageContent-${toPageNum}`);
+            if (!fromPage || !toPage) return;
+
+            let children = Array.from(fromPage.children);
+            let totalHeight = 0,
+                splitIndex = children.length;
+            for (let i = 0; i < children.length; i++) {
+                totalHeight += children[i].offsetHeight;
+                if (totalHeight > MAX_PAGE_HEIGHT) {
+                    splitIndex = i;
+                    break;
+                }
+            }
+            // Move all blocks after splitIndex to next page (append at end, not at start)
+            while (fromPage.children.length > splitIndex) {
+                toPage.appendChild(fromPage.children[splitIndex]);
+            }
+        }
+
+        // 3. Remove empty pages except first
+        function removeEmptyPages() {
+            for (let i = currentPageCount; i > 1; i--) {
+                const page = document.getElementById(`page-${i}`);
+                const content = document.getElementById(`pageContent-${i}`);
+                if (page && content && !content.innerText.trim()) {
+                    page.parentNode.removeChild(page);
+                    currentPageCount--;
+                }
+            }
+        }
+
+        // 3. Create next page (if not exists)
+        function createNextPage(pageNumber) {
+            const wrapper = document.getElementById('documentWrapper');
+            const newPage = document.createElement('div');
+            newPage.className = 'document-page';
+            newPage.id = `page-${pageNumber}`;
+            newPage.innerHTML = `
+                <div class="page-content" id="pageContent-${pageNumber}" contenteditable="true"></div>
+                <div class="page-number">Page ${pageNumber}</div>
+            `;
+            wrapper.appendChild(newPage);
+            currentPageCount = pageNumber;
+            setupPageEventListeners(pageNumber);
+        }
+
+        // 4. Setup event listeners for each page (input, paste, etc)
+        function setupPageEventListeners(pageNumber) {
+            const pageContent = document.getElementById(`pageContent-${pageNumber}`);
+            if (!pageContent) return;
+            pageContent.addEventListener('input', () => {
+                updateStatus('Editing...', 'status-saving');
+                clearTimeout(autoSaveTimer);
+                clearTimeout(pageBreakTimer);
+                pageBreakTimer = setTimeout(checkForOverflow, 200);
+                autoSaveTimer = setTimeout(saveCurrentContent, 2000);
+            });
+            pageContent.addEventListener('paste', (event) => {
+                // --- Fix: Handle pasted images and text in order ---
+                const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+                let handled = false;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf("image") === 0) {
+                        event.preventDefault();
+                        const blob = items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = function (evt) {
+                            insertHtmlAtCursor(`<img src="${evt.target.result}" />`);
+                        };
+                        reader.readAsDataURL(blob);
+                        handled = true;
+                    }
+                }
+                // Agar image nahi hai, toh default paste hone dein (text/html)
+                if (!handled) {
+                    // Default: allow normal paste
+                }
+                clearTimeout(pageBreakTimer);
+                pageBreakTimer = setTimeout(checkForOverflow, 300);
+            });
+            pageContent.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    setTimeout(checkForOverflow, 100);
+                }
+            });
+            pageContent.addEventListener('keydown', handleKeydown);
+        }
+
+        // Utility: Insert HTML at cursor position
+        function insertHtmlAtCursor(html) {
+            let sel, range;
+            if (window.getSelection) {
+                sel = window.getSelection();
+                if (sel.getRangeAt && sel.rangeCount) {
+                    range = sel.getRangeAt(0);
+                    range.deleteContents();
+                    const el = document.createElement("div");
+                    el.innerHTML = html;
+                    let frag = document.createDocumentFragment(), node, lastNode;
+                    while ((node = el.firstChild)) {
+                        lastNode = frag.appendChild(node);
+                    }
+                    range.insertNode(frag);
+                    // Move cursor after inserted node
+                    if (lastNode) {
+                        range = range.cloneRange();
+                        range.setStartAfter(lastNode);
+                        range.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            }
+        }
+
+        // 5. On question load, reset page count and call checkForOverflow
+        function loadQuestion(chapterIndex, questionIndex) {
+            if (isLoading) return;
+            if (currentChapter >= 0 && currentQuestion >= 0) saveCurrentContent();
+            isLoading = true;
+            updateStatus('Loading...', 'status-saving');
+            currentChapter = chapterIndex;
+            currentQuestion = questionIndex;
+            const question = data.chapters[chapterIndex].questions[questionIndex];
+            let content = '';
+            if (question.answers && question.answers[0] && question.answers[0].answer) {
+                try {
+                    const answerData = JSON.parse(question.answers[0].answer);
+                    content = answerData.text || '<p>Start writing your answer here...</p>';
+                } catch {
+                    content = '<p>Error loading content. Start writing here...</p>';
+                }
+            } else {
+                content = '<p>Start writing your answer here...</p>';
+            }
+            const wrapper = document.getElementById('documentWrapper');
+            wrapper.innerHTML = `
+                <div class="document-page" id="page-1">
+                    <div class="page-header">
+                        <input type="text" class="question-title-input" id="questionTitle" placeholder="Enter question title..." value="${question.title || ''}">
+                    </div>
+                    <div class="page-content" id="pageContent-1" contenteditable="true">
+                        ${content}
+                    </div>
+                    <div class="page-number">Page 1</div>
+                </div>
+            `;
+            currentPageCount = 1;
+            setupPageEventListeners(1);
+            setupEventListeners();
+
+            // Only one pagination pass, after DOM is ready
+            setTimeout(() => {
+                checkForOverflow();
+                isLoading = false;
+                updateStatus('Loaded successfully', 'status-saved');
+            }, 50);
+        }
+        // 6. On delete/backspace at start/end, merge pages (already in your code)
+        function handleKeydown(event) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+            const range = selection.getRangeAt(0);
+            const currentPage = getCurrentPage(range.startContainer);
+
+            // BACKSPACE at start of page
+            if (event.key === 'Backspace') {
+                const previousPage = getPreviousPage(currentPage);
+                if (previousPage && isAtPageStart(currentPage.querySelector('.page-content'), range)) {
+                    event.preventDefault();
+                    const prevContent = previousPage.querySelector('.page-content');
+                    const currContent = currentPage.querySelector('.page-content');
+                    if (prevContent && currContent) {
+                        while (currContent.firstChild) {
+                            prevContent.appendChild(currContent.firstChild);
+                        }
+                        if (!currContent.hasChildNodes()) {
+                            currentPage.parentNode.removeChild(currentPage);
+                            currentPageCount--;
+                        }
+                        // setTimeout(() => {
+                        //     placeCursorAtEnd(prevContent);
+                        //     prevContent.scrollIntoView({
+                        //         behavior: "smooth",
+                        //         block: "end"
+                        //     });
+                        //     checkForOverflow();
+                        // }, 0);
+                        setTimeout(() => {
+                            if (prevContent && prevContent.lastChild) {
+                                let node = prevContent.lastChild;
+                                placeCursorAtStart(node);
+                            } else {
+                                placeCursorAtEnd(prevContent);
+                            }
+                            prevContent.scrollIntoView({
+                                behavior: "smooth",
+                                block: "end"
+                            });
+                            checkForOverflow();
+                        }, 0);
+                    }
+                }
+            }
+            // DELETE at end of page
+            else if (event.key === 'Delete') {
+                const nextPage = getNextPage(currentPage);
+                if (nextPage && isAtPageEnd(currentPage.querySelector('.page-content'), range)) {
+                    event.preventDefault();
+                    const currContent = currentPage.querySelector('.page-content');
+                    const nextContent = nextPage.querySelector('.page-content');
+                    if (currContent && nextContent) {
+                        while (nextContent.firstChild) {
+                            currContent.appendChild(nextContent.firstChild);
+                        }
+                        if (!nextContent.hasChildNodes()) {
+                            nextPage.parentNode.removeChild(nextPage);
+                            currentPageCount--;
+                        }
+                        setTimeout(() => {
+                            placeCursorAtEnd(currContent);
+                            currContent.scrollIntoView({
+                                behavior: "smooth",
+                                block: "end"
+                            });
+                            checkForOverflow();
+                        }, 0);
+                    }
+                }
+            }
+        }
+
+        // 7. Utility: Place cursor at end of node
+        function placeCursorAtEnd(node) {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        // 8. Utility: Place cursor at start of node
+        function placeCursorAtStart(node) {
+            const range = document.createRange();
+            if (node.nodeType === Node.TEXT_NODE) {
+                range.setStart(node, 0);
+            } else {
+                range.selectNodeContents(node);
+                range.collapse(true);
+            }
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        // 9. Utility: Get current/prev/next page
+        function getCurrentPage(container) {
+            while (container && !container.classList?.contains('document-page')) {
+                container = container.parentNode;
+            }
+            return container;
+        }
+
+        function getPreviousPage(currentPage) {
+            if (!currentPage) return null;
+            return currentPage.previousElementSibling && currentPage.previousElementSibling.classList.contains('document-page') ?
+                currentPage.previousElementSibling : null;
+        }
+
+        function getNextPage(currentPage) {
+            if (!currentPage) return null;
+            return currentPage.nextElementSibling && currentPage.nextElementSibling.classList.contains('document-page') ?
+                currentPage.nextElementSibling : null;
+        }
+
+        function isAtPageStart(pageContent, range) {
+            if (!range.collapsed) return false;
+            if (range.startContainer === pageContent && range.startOffset === 0) return true;
+            if (pageContent.firstChild && range.startContainer === pageContent.firstChild && range.startOffset === 0) return true;
+            let node = range.startContainer;
+            while (node && node !== pageContent) {
+                if (node.previousSibling) return false;
+                node = node.parentNode;
+            }
+            return true;
+        }
+
+        function isAtPageEnd(pageContent, range) {
+            if (!range.collapsed) return false;
+            let node = range.endContainer;
+            let offset = range.endOffset;
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (offset !== node.length) return false;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (offset !== node.childNodes.length) return false;
+            }
+            let last = pageContent.lastChild;
+            while (last && last.lastChild) last = last.lastChild;
+            return node === last || node === pageContent;
+        }
+
+        // 10. On save, collect all page contents in order
+        function getAllContent() {
+            let allContent = '';
+            let title = '';
+            const titleInput = document.getElementById('questionTitle');
+            if (titleInput) title = titleInput.value;
+            for (let i = 1; i <= currentPageCount; i++) {
+                const pageContent = document.getElementById(`pageContent-${i}`);
+                if (pageContent) allContent += pageContent.innerHTML;
+            }
+            return {
+                title,
+                content: allContent
+            };
         }
 
         function exportToPDF() {

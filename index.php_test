@@ -1,0 +1,256 @@
+<?php
+$jsonFile = 'data.json';
+
+// Handle AJAX save
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = file_get_contents('php://input');
+    $postData = json_decode($input, true) ?: $_POST;
+    header('Content-Type: application/json');
+    if (isset($postData['action']) && $postData['action'] === 'save') {
+        $dataToSave = $postData['data'] ?? null;
+        if (!$dataToSave) {
+            echo json_encode(['success' => false, 'message' => 'No data provided']);
+            exit;
+        }
+        $jsonData = json_encode($dataToSave, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if ($jsonData === false) {
+            echo json_encode(['success' => false, 'message' => 'JSON encode error']);
+            exit;
+        }
+        $tempFile = $jsonFile . '.tmp';
+        if (file_put_contents($tempFile, $jsonData, LOCK_EX) === false) {
+            echo json_encode(['success' => false, 'message' => 'Temp write error']);
+            exit;
+        }
+        if (!rename($tempFile, $jsonFile)) {
+            unlink($tempFile);
+            echo json_encode(['success' => false, 'message' => 'Rename error']);
+            exit;
+        }
+        echo json_encode(['success' => true, 'message' => 'Saved']);
+        exit;
+    }
+}
+
+// Load data
+if (!file_exists($jsonFile)) {
+    file_put_contents($jsonFile, json_encode([
+        'book_id' => 1,
+        'title' => 'Sample Book',
+        'chapters' => [[
+            'id' => 1,
+            'title' => 'Sample Chapter',
+            'questions' => [[
+                'id' => 1,
+                'title' => 'Sample Question',
+                'answers' => [[
+                    'id' => 1,
+                    'user_id' => 1,
+                    'author_first_name' => 'User',
+                    'author_last_name' => '',
+                    'answer' => json_encode([
+                        'time' => time() * 1000,
+                        'text' => '<p>Start writing your answer here...</p>'
+                    ])
+                ]]
+            ]]
+        ]]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+$data = json_decode(file_get_contents($jsonFile), true);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Book Editor</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f9fbfd; margin: 0; }
+        .main { display: flex; }
+        .sidebar { width: 250px; background: #fff; border-right: 1px solid #eee; padding: 10px; }
+        .editor { flex: 1; padding: 20px; }
+        .document-page { background: #fff; width: 816px; min-height: 1056px; max-height: 1056px; margin: 0 auto 24px; padding: 48px; box-shadow: 0 2px 10px rgba(0,0,0,.1); border-radius: 2px; position: relative; overflow: hidden; }
+        .page-content { min-height: 600px; max-height: 864px; font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.15; color: #000; outline: none; word-wrap: break-word; overflow: visible; }
+        .page-number { position: absolute; bottom: 24px; right: 32px; font-size: 10px; color: #5f6368; }
+        .question-title-input { width: 100%; font-size: 24px; font-weight: 400; border: none; outline: none; background: transparent; padding: 8px 0; }
+        .question-item { padding: 8px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; background: #f8f9fa; }
+        .question-item.active { background: #e8f0fe; }
+        .toolbar { margin-bottom: 10px; }
+        .toolbar button { margin-right: 5px; }
+    </style>
+</head>
+<body>
+<div class="main">
+    <div class="sidebar">
+        <div><b>Document Outline</b></div>
+        <div id="questionsContainer"></div>
+        <button onclick="addNewQuestion()" style="width:100%;margin-top:10px;">Add New Question</button>
+    </div>
+    <div class="editor">
+        <div class="toolbar">
+            <button onclick="saveAllChanges()">💾 Save All</button>
+        </div>
+        <div id="documentWrapper"></div>
+    </div>
+</div>
+<script>
+let data = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+let currentChapter = 0, currentQuestion = 0, currentPageCount = 1, autoSaveTimer, pageBreakTimer;
+const MAX_PAGE_HEIGHT = 864;
+
+function loadSidebar() {
+    const c = document.getElementById('questionsContainer');
+    c.innerHTML = '';
+    data.chapters.forEach((chapter, ci) => {
+        chapter.questions.forEach((q, qi) => {
+            const div = document.createElement('div');
+            div.className = 'question-item' + (ci === currentChapter && qi === currentQuestion ? ' active' : '');
+            div.textContent = (chapter.title || 'Chapter') + ': ' + (q.title || 'Question');
+            div.onclick = () => { loadQuestion(ci, qi); };
+            c.appendChild(div);
+        });
+    });
+}
+function loadQuestion(ci, qi) {
+    currentChapter = ci; currentQuestion = qi;
+    const q = data.chapters[ci].questions[qi];
+    let content = '';
+    try { content = JSON.parse(q.answers[0].answer).text || ''; } catch { content = ''; }
+    document.getElementById('documentWrapper').innerHTML = `
+        <div class="document-page" id="page-1">
+            <input type="text" class="question-title-input" id="questionTitle" value="${q.title || ''}">
+            <div class="page-content" id="pageContent-1" contenteditable="true">${content}</div>
+            <div class="page-number">Page 1</div>
+        </div>
+    `;
+    currentPageCount = 1;
+    setupPageEventListeners(1);
+    setTimeout(checkForOverflow, 100);
+    loadSidebar();
+}
+function addNewQuestion() {
+    const questions = data.chapters[currentChapter].questions;
+    const newId = questions.length > 0 ? Math.max(...questions.map(q => q.id || 0)) + 1 : 1;
+    questions.push({
+        id: newId,
+        title: 'Untitled Question',
+        answers: [{
+            id: 1, user_id: 1, author_first_name: "User", author_last_name: "",
+            answer: JSON.stringify({ time: Date.now(), text: "<p>Start writing your answer here...</p>" })
+        }]
+    });
+    loadSidebar();
+    loadQuestion(currentChapter, questions.length - 1);
+}
+function saveAllChanges() {
+    const title = document.getElementById('questionTitle')?.value || '';
+    let allContent = '';
+    for (let i = 1; i <= currentPageCount; i++) {
+        const pageContent = document.getElementById(`pageContent-${i}`);
+        if (pageContent) allContent += pageContent.innerHTML;
+    }
+    data.chapters[currentChapter].questions[currentQuestion].title = title;
+    data.chapters[currentChapter].questions[currentQuestion].answers[0].answer = JSON.stringify({ time: Date.now(), text: allContent });
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', data })
+    });
+}
+function setupPageEventListeners(pageNumber) {
+    const pageContent = document.getElementById(`pageContent-${pageNumber}`);
+    if (!pageContent) return;
+    pageContent.addEventListener('input', () => {
+        clearTimeout(pageBreakTimer);
+        pageBreakTimer = setTimeout(checkForOverflow, 200);
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(saveAllChanges, 2000);
+    });
+    pageContent.addEventListener('paste', () => {
+        clearTimeout(pageBreakTimer);
+        pageBreakTimer = setTimeout(checkForOverflow, 300);
+    });
+}
+
+function createNextPage(pageNumber) {
+    const wrapper = document.getElementById('documentWrapper');
+    const newPage = document.createElement('div');
+    newPage.className = 'document-page';
+    newPage.id = `page-${pageNumber}`;
+    newPage.innerHTML = `<div class="page-content" id="pageContent-${pageNumber}" contenteditable="true"></div>
+        <div class="page-number">Page ${pageNumber}</div>`;
+    wrapper.appendChild(newPage);
+    currentPageCount = pageNumber;
+    setupPageEventListeners(pageNumber);
+}
+
+function checkForOverflow() {
+    for (let pageNum = 1; pageNum <= currentPageCount; pageNum++) {
+        const pageContent = document.getElementById(`pageContent-${pageNum}`);
+        if (pageContent && pageContent.scrollHeight > MAX_PAGE_HEIGHT) {
+            const nextPageNum = pageNum + 1;
+            if (!document.getElementById(`page-${nextPageNum}`)) createNextPage(nextPageNum);
+            moveContentToNextPage(pageNum, nextPageNum);
+            break;
+        }
+    }
+}
+
+// --- FREEZE-PROOF PAGINATION ---
+function moveContentToNextPage(fromPageNum, toPageNum) {
+    const fromPage = document.getElementById(`pageContent-${fromPageNum}`);
+    const toPage = document.getElementById(`pageContent-${toPageNum}`);
+    if (!fromPage || !toPage) return;
+
+    // Remove empty paragraphs
+    let children = Array.from(fromPage.children);
+    for (let i = children.length - 1; i >= 0; i--) {
+        const child = children[i];
+        if (child.tagName === "P" && (child.innerHTML.trim() === "" || child.innerHTML.trim() === "<br>")) {
+            fromPage.removeChild(child);
+        }
+    }
+    children = Array.from(fromPage.children);
+
+    let totalHeight = 0, splitIndex = children.length;
+    for (let i = 0; i < children.length; i++) {
+        totalHeight += children[i].offsetHeight;
+        if (totalHeight > MAX_PAGE_HEIGHT) {
+            splitIndex = i;
+            break;
+        }
+    }
+
+    // If first element is too tall, move it only once
+    if (splitIndex === 0 && children.length > 0) {
+        const el = children[0];
+        if (el.dataset.moved === "1") return;
+        el.dataset.moved = "1";
+        toPage.appendChild(el);
+        return;
+    }
+
+    if (splitIndex === children.length) return;
+
+    let firstMoved = null;
+    while (fromPage.children.length > splitIndex) {
+        const el = fromPage.children[splitIndex];
+        if (!firstMoved) firstMoved = el;
+        toPage.appendChild(el);
+    }
+}
+function resetMovedMarkers() {
+    document.querySelectorAll('[data-moved="1"]').forEach(el => el.removeAttribute('data-moved'));
+}
+document.addEventListener('DOMContentLoaded', function() {
+    loadSidebar();
+    loadQuestion(0, 0);
+    resetMovedMarkers();
+    window.addEventListener('beforeunload', function() {
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+        saveAllChanges();
+    });
+});
+</script>
+</body>
+</html>
